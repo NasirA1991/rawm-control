@@ -194,18 +194,37 @@ access, which the manifest already declares.
 The protocol is shared across the current RAWM family. The bundled capability
 table (from the vendor's own device database) covers:
 
-| Model | USB ID | Polling |
-|-------|--------|---------|
-| ER21 / ER21M / ER21Pro | 1915:233f / 2339 / **2338** | 125–1000 Hz |
-| ES21 / ES21M / ES21Pro | 1915:2333 / 2337 / 2334, 2352 | 125–1000 Hz |
-| ES11 | 1915:2341 | 125–1000 Hz |
-| G11 / G11Plus / G11Pro | 1915:233a / 2343 / 2344 | 125–1000 Hz |
-| SA-ML01 / SA-MH01 / SA-SH01 / SA-SL01 | 1915:2329 / 232c / 232e / 232d | 125–1000 Hz |
-| SA-MH01Pro / SA-SH01Pro / SA-SH01S | 1915:2331 / 2332 / 233e | 125–1000 Hz |
-| SA-SL01C | 1915:2340 | 125–1000 Hz |
-| LEVIATHAN V4 | 1915:234a | 125–8000 Hz |
-| SADES Dagger | 1915:2348 | 125–1000 Hz |
-| RAWM Knife | 1915:2328 | 125–1000 Hz |
+| Model | USB ID | Direct / own dongle | With 8K receiver |
+|-------|--------|--------------------:|-----------------:|
+| ER21 | 1915:233f | 1000 Hz | 8000 Hz |
+| ER21M | 1915:2339 | 1000 Hz | 8000 Hz |
+| ER21Pro | 1915:2338 | 1000 Hz | 8000 Hz |
+| ES11 | 1915:2341 | 1000 Hz | 8000 Hz |
+| ES21 | 1915:2333 | 1000 Hz | 8000 Hz |
+| ES21M | 1915:2337 | 1000 Hz | 8000 Hz |
+| ES21Pro | 1915:2352 / 2349 / 2334 | 1000 Hz | 8000 Hz |
+| G11 | 1915:233a | 1000 Hz | 2000 Hz |
+| G11Plus | 1915:2343 | 1000 Hz | 2000 Hz |
+| G11Pro | 1915:2344 | 1000 Hz | 8000 Hz |
+| LEVIATHAN V4 | 1915:234a | 8000 Hz | 8000 Hz |
+| SA-MH01 | 1915:232c | 1000 Hz | 8000 Hz |
+| SA-MH01Pro | 1915:2331 | 1000 Hz | 8000 Hz |
+| SA-ML01 | 1915:2329 | 1000 Hz | 8000 Hz |
+| SA-SH01 | 1915:232e | 1000 Hz | 8000 Hz |
+| SA-SH01Pro | 1915:2332 | 1000 Hz | 8000 Hz |
+| SA-SH01S | 1915:233e | 1000 Hz | 8000 Hz |
+| SA-SL01 | 1915:232d | 1000 Hz | 8000 Hz |
+| SA-SL01C | 1915:2340 | 1000 Hz | 2000 Hz |
+| SADES Dagger | 1915:2348 | 1000 Hz | 8000 Hz |
+| RAWM Knife | 1915:2328 | 1000 Hz | 8000 Hz |
+
+“Direct / own dongle” is what the mouse advertises without a separate receiver;
+“With 8K receiver” is what the vendor driver adds from a compatible dongle
+(e.g. **RAWM HS Receiver `1915:232b`**). The effective maximum also depends on
+the receiver model and power mode: **Office = 125 Hz, LP = 1000 Hz**, while
+HP/Gaming+ allow the table maximum. The app shows the current rate **and** the
+maximum for the current link (`rawmctl status` line: `polling 1000 Hz (max
+8000 Hz)`).
 
 **Receiver dongles are supported.** A dongle such as the *RAWM HS Receiver*
 (`1915:232b`) describes itself on the direct link; the paired mouse is a virtual

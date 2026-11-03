@@ -66,7 +66,7 @@ def _print_status(state: MouseState) -> None:
     link = state.connection + (" via receiver" if state.via_receiver and not state.wired else "")
     print(f"  connection    {link}" + (" (charging)" if state.charging else ""))
     print(f"  battery       {state.battery}%")
-    print(f"  polling       {state.polling_rate} Hz")
+    print(f"  polling       {state.polling_rate} Hz (max {devices.max_polling_rate(state)} Hz)")
     print(f"  dpi           {state.cpi}")
     print(f"  lod           {caps.lod_label(state.lod)}")
     print(f"  motion sync   {'on' if state.motion_sync else 'off'}")
@@ -88,6 +88,8 @@ def _raw_json(state: MouseState) -> dict:
     data = {}
     for key, value in vars(state).items():
         data[key] = value
+    data["max_polling_rate"] = devices.max_polling_rate(state)
+    data["effective_polling_rates"] = devices.effective_polling_rates(state)
     return data
 
 
@@ -185,6 +187,8 @@ def run(argv: list[str]) -> int:
                         "name": caps.display_name,
                         "product_id": f"{caps.product_id:04x}",
                         "polling_rates": caps.polling_rates,
+                        "max_polling_rate": devices.max_polling_rate(state),
+                        "effective_polling_rates": devices.effective_polling_rates(state),
                         "cpi_range": list(caps.cpi_range),
                         "cpi_step": caps.cpi_step,
                         "power_modes": caps.power_modes,

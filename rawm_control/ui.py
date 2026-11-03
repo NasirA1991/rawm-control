@@ -532,7 +532,10 @@ class MainWindow(Adw.ApplicationWindow):
             if state.via_receiver and not state.wired:
                 link += " (receiver)"
             self.row_connection.set_subtitle(link + (" · charging" if state.charging else ""))
-            self.row_polling.set_subtitle(self._polling_text(state.polling_rate))
+            max_rate = devices.max_polling_rate(state)
+            self.row_polling.set_subtitle(
+                f"{self._polling_text(state.polling_rate)} · up to {self._polling_text(max_rate)}"
+            )
             self.row_lod.set_subtitle(caps.lod_label(state.lod))
             self.row_power.set_subtitle(self._power_text(state, caps))
             self.row_signal.set_subtitle(
