@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=RAWM Control
+GenericName=Mouse Configuration
+Comment=Configure RAWM mice and keep an eye on battery in the tray
+Exec=rawm-control
+Icon=rawm-control
+Terminal=false
+Categories=Settings;HardwareSettings;
+Keywords=mouse;gaming;rawm;dpi;polling;battery;
+StartupNotify=true
+StartupWMClass=io.github.rawmcontrol.RawmControl
+X-GNOME-UsesNotifications=true

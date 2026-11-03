@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.rawmcontrol.RawmControl</id>
+  <name>RAWM Control</name>
+  <summary>Configure RAWM gaming mice on Linux</summary>
+  <developer id="io.github.rawmcontrol">
+    <name>RAWM Control contributors</name>
+  </developer>
+  <launchable type="desktop-id">io.github.rawmcontrol.RawmControl.desktop</launchable>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <description>
+    <p>
+      RAWM Control is a native GTK4/libadwaita application for RAWM gaming mice.
+      It talks directly to the mouse's vendor HID interface, so no browser,
+      Windows VM or vendor service is needed.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Battery percentage, charging state and connection type in the tray</li>
+      <li>Polling rate, motion sync, ripple control, angle snapping and tuning</li>
+      <li>Lift-off distance, power mode and sleep timer</li>
+      <li>DPI levels with per-level indicator colours</li>
+      <li>Hotplug detection and automatic reconnection</li>
+    </ul>
+    <p>
+      This project is not affiliated with RAWM or MiraclTek. It was built by
+      reverse-engineering the public RAWM HUB web driver.
+    </p>
+  </description>
+  <categories>
+    <category>Settings</category>
+    <category>HardwareSettings</category>
+  </categories>
+  <provides>
+    <binary>rawm-control</binary>
+    <binary>rawmctl</binary>
+  </provides>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1.0" date="2026-11-03"/>
+  </releases>
+</component>

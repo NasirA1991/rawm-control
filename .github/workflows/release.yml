@@ -1,0 +1,73 @@
+name: Release + AUR (stable)
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      sha256: ${{ steps.package.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check tag matches VERSION
+        id: version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          CODE_VERSION=$(python3 -c "from rawm_control.config import VERSION; print(VERSION)")
+          if [ "$VERSION" != "$CODE_VERSION" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match VERSION=$CODE_VERSION" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build source tarball
+        id: package
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          mkdir -p dist
+          git archive --format=tar.gz --prefix="rawm-control-${VERSION}/" \
+            -o "dist/rawm-control-${VERSION}.tar.gz" HEAD
+          SHA=$(sha256sum "dist/rawm-control-${VERSION}.tar.gz" | cut -d' ' -f1)
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/rawm-control-*.tar.gz
+          generate_release_notes: true
+
+  aur:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Render stable PKGBUILD
+        env:
+          REPO: ${{ github.repository }}
+          VERSION: ${{ needs.release.outputs.version }}
+          SHA256: ${{ needs.release.outputs.sha256 }}
+        run: |
+          sed -e "s|@REPO@|${REPO}|g" \
+              -e "s|@VERSION@|${VERSION}|g" \
+              -e "s|@SHA256@|${SHA256}|g" \
+              packaging/aur/rawm-control/PKGBUILD.in \
+              > packaging/aur/rawm-control/PKGBUILD
+
+      - name: Publish rawm-control
+        uses: KSXGitHub/github-actions-deploy-aur@v4.2.0
+        with:
+          pkgname: rawm-control
+          pkgbuild: packaging/aur/rawm-control/PKGBUILD
+          commit_username: ${{ secrets.AUR_USERNAME }}
+          commit_email: ${{ secrets.AUR_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "rawm-control ${{ needs.release.outputs.version }}"
+          ssh_keyscan_types: ed25519,rsa,ecdsa

@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rawm-control"
+version = "0.1.0"
+description = "Native Linux configuration for RAWM gaming mice (reverse-engineered vendor HID protocol)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "RAWM Control contributors" }]
+keywords = ["rawm", "mouse", "hid", "gtk4", "libadwaita", "gaming"]
+classifiers = [
+    "Environment :: X11 Applications :: GTK",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+]
+# PyGObject/GTK4/libadwaita/DBus come from the distribution, not PyPI.
+dependencies = []
+
+[project.scripts]
+rawm-control = "rawm_control.app:main"
+rawmctl = "rawm_control.app:main"
+
+[project.urls]
+Documentation = "https://github.com/"
+
+[tool.setuptools]
+packages = ["rawm_control"]
+
+[tool.setuptools.package-data]
+rawm_control = ["data/*.json"]

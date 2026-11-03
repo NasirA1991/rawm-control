@@ -1,0 +1,1504 @@
+[
+ {
+  "name": "ES21Pro",
+  "display_name": "ES21Pro",
+  "product_id": "2352",
+  "vendor_id": "1915",
+  "mouse": true,
+  "battery": true,
+  "light": true,
+  "polling_rates": [
+   125,
+   250,
+   500,
+   1000
+  ],
+  "cpi_range": [
+   50,
+   30000
+  ],
+  "cpi_step": 50,
+  "cpi_levels": [
+   400,
+   800,
+   1600,
+   3200,
+   0,
+   0,
+   0,
+   0
+  ],
+  "power_modes": [
+   "Office",
+   "LP",
+   "HP"
+  ],
+  "power_modes2": [
+   "Office",
+   "LP",
+   "HP",
+   "Gaming+"
+  ],
+  "power_mode_tips": [
+   "Very low power consumption, highest polling rate is only supported at 125Hz",
+   "Low power consumption, moderate performance, highest polling rate supported at 1000Hz",
+   "High power consumption, excellent performance, suitable for most gaming scenarios",
+   "Best performance but also highest power consumption"
+  ],
+  "glass_mode": true,
+  "lods": [
+   "LOW",
+   "MEDIUM",
+   "HIGH"
+  ],
+  "soc": "NORDIC",
+  "working_modes": "usb,2.4g",
+  "sensor": "PAW3950",
+  "oms": [
+   0,
+   2
+  ]
+ },
+ {
+  "name": "ES21Pro(AkamiKarubi Model)",
+  "display_name": "ES21Pro",
+  "display_name_model": "(赤見かるびモデル)",
+  "product_id": "2349",
+  "vendor_id": "1915",
+  "mouse": true,
+  "battery": true,
+  "light": true,
+  "polling_rates": [
+   125,
+   250,
+   500,
+   1000
+  ],
+  "cpi_range": [
+   50,
+   30000
+  ],
+  "cpi_step": 50,
+  "cpi_levels": [
+   400,
+   800,
+   1600,
+   3200,
+   0,
+   0,
+   0,
+   0
+  ],
+  "power_modes": [
+   "Office",
+   "LP",
+   "HP"
+  ],
+  "power_modes2": [
+   "Office",
+   "LP",
+   "HP",
+   "Gaming+"
+  ],
+  "power_mode_tips": [
+   "Very low power consumption, highest polling rate is only supported at 125Hz",
+   "Low power consumption, moderate performance, highest polling rate supported at 1000Hz",
+   "High power consumption, excellent performance, suitable for most gaming scenarios",
+   "Best performance but also highest power consumption"
+  ],
+  "glass_mode": true,
+  "lods": [
+   "LOW",
+   "MEDIUM",
+   "HIGH"
+  ],
+  "soc": "NORDIC",
+  "working_modes": "usb,2.4g",
+  "sensor": "PAW3950",
+  "oms": [
+   0,
+   2
+  ]
+ },
+ {
+  "name": "SADES Dagger",
+  "display_name": "SADES Dagger",
+  "product_id": "2348",
+  "vendor_id": "1915",
+  "mouse": true,
+  "battery": true,
+  "light": true,
+  "polling_rates": [
+   125,
+   250,
+   500,
+   1000
+  ],
+  "cpi_range": [
+   50,
+   30000
+  ],
+  "cpi_step": 50,
+  "cpi_levels": [
+   400,
+   800,
+   1600,
+   3200,
+   0,
+   0,
+   0,
+   0
+  ],
+  "power_modes": [
+   "Office",
+   "LP",
+   "HP"
+  ],
+  "power_modes2": [
+   "Office",
+   "LP",
+   "HP",
+   "Gaming+"
+  ],
+  "power_mode_tips": [
+   "Very low power consumption, highest polling rate is only supported at 125Hz",
+   "Low power consumption, moderate performance, highest polling rate supported at 1000Hz",
+   "High power consumption, excellent performance, suitable for most gaming scenarios",
+   "Best performance but also highest power consumption"
+  ],
+  "glass_mode": true,
+  "lods": [
+   "LOW",
+   "MEDIUM",
+   "HIGH"
+  ],
+  "soc": "NORDIC",
+  "working_modes": "usb,2.4g",
+  "sensor": "PAW3950",
+  "oms": [
+   0,
+   2
+  ]
+ },
+ {
+  "name": "SADES Dagger Receiver",
+  "display_name": "SADES Dagger Receiver",
+  "product_id": "2347",
+  "vendor_id": "1915",
+  "receiver": true,
+  "light": true,
+  "boost_polling_rates": [
+   2000,
+   4000,
+   8000
+  ],
+  "soc": "NORDIC"
+ },
+ {
+  "name": "RAWM HS Receiver",
+  "display_name": "RAWM HS Receiver",
+  "product_id": "2346",
+  "vendor_id": "1915",
+  "receiver": true,
+  "light": true,
+  "boost_polling_rates": [
+   2000,
+   4000,
+   8000
+  ],
+  "soc": "NORDIC"
+ },
+ {
+  "name": "G11Pro",
+  "display_name": "G11Pro",
+  "product_id": "2344",
+  "vendor_id": "1915",
+  "mouse": true,
+  "battery": true,
+  "light": true,
+  "brightness": true,
+  "polling_rates": [
+   125,
+   250,
+   500,
+   1000
+  ],
+  "cpi_range": [
+   50,
+   26000
+  ],
+  "cpi_step": 50,
+  "cpi_levels": [
+   400,
+   800,
+   1600,
+   3200,
+   0,
+   0,
+   0,
+   0
+  ],
+  "power_modes": [
+   "Office",
+   "LP",
+   "HP"
+  ],
+  "power_modes2": [
+   "Office",
+   "LP",
+   "HP",
+   "Gaming+"
+  ],
+  "power_mode_tips": [
+   "Very low power consumption, highest polling rate is only supported at 125Hz",
+   "Low power consumption, moderate performance, highest polling rate supported at 1000Hz",
+   "High power consumption, excellent performance, suitable for most gaming scenarios",
+   "Best performance but also highest power consumption"
+  ],
+  "lods": [
+   "LOW",
+   "HIGH"
+  ],
+  "soc": "PANCHIP",
+  "limit_memory": true,
+  "working_modes": "bt,usb,2.4g",
+  "sensor": "PAW3395"
+ },
+ {
+  "name": "G11Plus",
+  "display_name": "G11Plus",
+  "product_id": "2343",
+  "vendor_id": "1915",
+  "mouse": true,
+  "battery": true,
+  "light": true,
+  "brightness": true,
+  "polling_rates": [
+   125,
+   250,
+   500,
+   1000
+  ],
+  "polling_rate_max": 2000,
+  "cpi_range": [
+   50,
+   12000
+  ],
+  "cpi_step": 50,
+  "cpi_levels": [
+   400,
+   800,
+   1600,
+   3200,
+   0,
+   0,
+   0,
+   0
+  ],
+  "power_modes": [
+   "LP",
+   "HP"
+  ],
+  "power_modes2": [
+   "LP",
+   "HP"
+  ],
+  "power_mode_tips": [
+   "Low power consumption, moderate performance",
+   "High power consumption, excellent performance, suitable for most gaming scenarios"
+  ],
+  "angle_tuning": true,
+  "lods": [
+   "LOW"
+  ],
+  "soc": "PANCHIP",
+  "limit_memory": true,
+  "working_modes": "bt,usb,2.4g",
+  "sensor": "PAW3311"
+ },
+ {
+  "name": "RAWM HS Receiver",
+  "display_name": "RAWM HS Receiver",
+  "product_id": "234b",
+  "vendor_id": "1915",
+  "receiver": true,
+  "light": true,
+  "boost_polling_rates": [
+   2000,
+   4000,
+   8000
+  ],
+  "soc": "NORDIC2"
+ },
+ {
+  "name": "LEVIATHAN V4",
+  "display_name": "LEVIATHAN V4",
+  "product_id": "234a",
+  "vendor_id": "1915",
+  "mouse": true,
+  "battery": true,
+  "light": true,
+  "polling_rates": [
+   125,
+   250,
+   500,
+   1000,
+   2000,
+   4000,
+   8000
+  ],
+  "cpi_range": [
+   50,
+   45000
+  ],
+  "cpi_step": 50,
+  "cpi_levels": [
+   400,
+   800,
+   1600,
+   3200,
+   0,
+   0,
+   0,
+   0
+  ],
+  "power_modes": [
+   "Office",
+   "LP",
+   "HP"
+  ],
+  "power_modes2": [
+   "Office",
+   "LP",
+   "HP",
+   "Gaming+"
+  ],
+  "power_mode_tips": [
+   "Very low power consumption, highest polling rate is only supported at 125Hz",
+   "Low power consumption, moderate performance, highest polling rate supported at 1000Hz",
+   "High power consumption, excellent performance, suitable for most gaming scenarios",
+   "Best performance but also highest power consumption"
+  ],
+  "enhanced_angle_tuning": true,
+  "glass_mode": true,
+  "lods": [
+   "LOW",
+   "MEDIUM",
+   "HIGH"
+  ],
+  "soc": "NORDIC2",
+  "working_modes": "usb,2.4g",
+  "sensor": "PAW3950",
+  "oms": [
+   0,
+   2
+  ]
+ },
+ {
+  "name": "ES11",
+  "display_name": "ES11",
+  "product_id": "2341",
+  "vendor_id": "1915",
+  "mouse": true,
+  "battery": true,
+  "light": true,
+  "brightness": true,
+  "polling_rates": [
+   125,
+   250,
+   500,
+   1000
+  ],
+  "cpi_range": [
+   50,
+   26000
+  ],
+  "cpi_step": 50,
+  "cpi_levels": [
+   400,
+   800,
+   1600,
+   3200,
+   0,
+   0,
+   0,
+   0
+  ],
+  "power_modes": [
+   "Office",
+   "LP",
+   "HP"
+  ],
+  "power_modes2": [
+   "Office",
+   "LP",
+   "HP",
+   "Gaming+"
+  ],
+  "power_mode_tips": [
+   "Very low power consumption, highest polling rate is only supported at 125Hz",
+   "Low power consumption, moderate performance, highest polling rate supported at 1000Hz",
+   "High power consumption, excellent performance, suitable for most gaming scenarios",
+   "Best performance but also highest power consumption"
+  ],
+  "lods": [
+   "LOW",
+   "HIGH"
+  ],
+  "soc": "PANCHIP",
+  "limit_memory": true,
+  "working_modes": "bt,usb,2.4g",
+  "sensor": "PAW3395"
+ },
+ {
+  "name": "SA-SL01C",
+  "display_name": "SA-SL01C",
+  "product_id": "2340",
+  "vendor_id": "1915",
+  "mouse": true,
+  "battery": true,
+  "light": true,
+  "brightness": true,
+  "polling_rates": [
+   125,
+   250,
+   500,
+   1000
+  ],
+  "polling_rate_max": 2000,
+  "cpi_range": [
+   50,
+   12000
+  ],
+  "cpi_step": 50,
+  "cpi_levels": [
+   400,
+   800,
+   1600,
+   3200,
+   0,
+   0,
+   0,
+   0
+  ],
+  "power_modes": [
+   "LP",
+   "HP"
+  ],
+  "power_modes2": [
+   "LP",
+   "HP"
+  ],
+  "power_mode_tips": [
+   "Low power consumption, moderate performance",
+   "High power consumption, excellent performance, suitable for most gaming scenarios"
+  ],
+  "angle_tuning": true,
+  "lods": [
+   "LOW"
+  ],
+  "soc": "PANCHIP",
+  "limit_memory": true,
+  "working_modes": "bt,usb,2.4g",
+  "sensor": "PAW3311"
+ },
+ {
+  "name": "ER21",
+  "display_name": "ER21",
+  "product_id": "233f",
+  "vendor_id": "1915",
+  "mouse": true,
+  "battery": true,
+  "light": true,
+  "brightness": true,
+  "polling_rates": [
+   125,
+   250,
+   500,
+   1000
+  ],
+  "cpi_range": [
+   50,
+   26000
+  ],
+  "cpi_step": 50,
+  "cpi_levels": [
+   400,
+   800,
+   1600,
+   3200,
+   0,
+   0,
+   0,
+   0
+  ],
+  "power_modes": [
+   "Office",
+   "LP",
+   "HP"
+  ],
+  "power_modes2": [
+   "Office",
+   "LP",
+   "HP",
+   "Gaming+"
+  ],
+  "power_mode_tips": [
+   "Very low power consumption, highest polling rate is only supported at 125Hz",
+   "Low power consumption, moderate performance, highest polling rate supported at 1000Hz",
+   "High power consumption, excellent performance, suitable for most gaming scenarios",
+   "Best performance but also highest power consumption"
+  ],
+  "lods": [
+   "LOW",
+   "HIGH"
+  ],
+  "soc": "PANCHIP",
+  "limit_memory": true,
+  "working_modes": "bt,usb,2.4g",
+  "sensor": "PAW3395"
+ },
+ {
+  "name": "SA-SH01S",
+  "display_name": "SA-SH01S",
+  "product_id": "233e",
+  "vendor_id": "1915",
+  "mouse": true,
+  "battery": true,
+  "light": true,
+  "brightness": true,
+  "polling_rates": [
+   125,
+   250,
+   500,
+   1000
+  ],
+  "cpi_range": [
+   50,
+   26000
+  ],
+  "cpi_step": 50,
+  "cpi_levels": [
+   400,
+   800,
+   1600,
+   3200,
+   0,
+   0,
+   0,
+   0
+  ],
+  "power_modes": [
+   "Office",
+   "LP",
+   "HP"
+  ],
+  "power_modes2": [
+   "Office",
+   "LP",
+   "HP",
+   "Gaming+"
+  ],
+  "power_mode_tips": [
+   "Very low power consumption, highest polling rate is only supported at 125Hz",
+   "Low power consumption, moderate performance, highest polling rate supported at 1000Hz",
+   "High power consumption, excellent performance, suitable for most gaming scenarios",
+   "Best performance but also highest power consumption"
+  ],
+  "lods": [
+   "LOW",
+   "HIGH"
+  ],
+  "soc": "PANCHIP",
+  "limit_memory": true,
+  "working_modes": "bt,usb,2.4g",
+  "sensor": "PAW3395"
+ },
+ {
+  "name": "RAWM Receiver",
+  "display_name": "RAWM Receiver",
+  "product_id": "233c",
+  "vendor_id": "1915",
+  "receiver": true,
+  "soc": "PANCHIP",
+  "limit_memory": true
+ },
+ {
+  "name": "RAWM HS Receiver",
+  "display_name": "RAWM HS Receiver",
+  "product_id": "233b",
+  "vendor_id": "1915",
+  "receiver": true,
+  "light": true,
+  "boost_polling_rates": [
+   2000,
+   4000,
+   8000
+  ],
+  "soc": "PANCHIP"
+ },
+ {
+  "name": "G11",
+  "display_name": "G11",
+  "product_id": "233a",
+  "vendor_id": "1915",
+  "mouse": true,
+  "battery": true,
+  "light": true,
+  "brightness": true,
+  "polling_rates": [
+   125,
+   250,
+   500,
+   1000
+  ],
+  "polling_rate_max": 2000,
+  "cpi_range": [
+   50,
+   12000
+  ],
+  "cpi_step": 50,
+  "cpi_levels": [
+   400,
+   800,
+   1600,
+   3200,
+   0,
+   0,
+   0,
+   0
+  ],
+  "power_modes": [
+   "LP",
+   "HP"
+  ],
+  "power_modes2": [
+   "LP",
+   "HP"
+  ],
+  "power_mode_tips": [
+   "Low power consumption, moderate performance",
+   "High power consumption, excellent performance, suitable for most gaming scenarios"
+  ],
+  "angle_tuning": true,
+  "lods": [
+   "LOW"
+  ],
+  "soc": "PANCHIP",
+  "limit_memory": true,
+  "working_modes": "bt,usb,2.4g",
+  "sensor": "PAW3311"
+ },
+ {
+  "name": "ES21",
+  "display_name": "ES21",
+  "product_id": "2333",
+  "vendor_id": "1915",
+  "mouse": true,
+  "battery": true,
+  "light": true,
+  "brightness": true,
+  "polling_rates": [
+   125,
+   250,
+   500,
+   1000
+  ],
+  "cpi_range": [
+   50,
+   26000
+  ],
+  "cpi_step": 50,
+  "cpi_levels": [
+   400,
+   800,
+   1600,
+   3200,
+   0,
+   0,
+   0,
+   0
+  ],
+  "power_modes": [
+   "Office",
+   "LP",
+   "HP"
+  ],
+  "power_modes2": [
+   "Office",
+   "LP",
+   "HP",
+   "Gaming+"
+  ],
+  "power_mode_tips": [
+   "Very low power consumption, highest polling rate is only supported at 125Hz",
+   "Low power consumption, moderate performance, highest polling rate supported at 1000Hz",
+   "High power consumption, excellent performance, suitable for most gaming scenarios",
+   "Best performance but also highest power consumption"
+  ],
+  "lods": [
+   "LOW",
+   "HIGH"
+  ],
+  "soc": "PANCHIP",
+  "limit_memory": true,
+  "working_modes": "bt,usb,2.4g",
+  "sensor": "PAW3395"
+ },
+ {
+  "name": "ER21M",
+  "display_name": "ER21M",
+  "product_id": "2339",
+  "vendor_id": "1915",
+  "mouse": true,
+  "battery": true,
+  "light": true,
+  "polling_rates": [
+   125,
+   250,
+   500,
+   1000
+  ],
+  "cpi_range": [
+   50,
+   30000
+  ],
+  "cpi_step": 50,
+  "cpi_levels": [
+   400,
+   800,
+   1600,
+   3200,
+   0,
+   0,
+   0,
+   0
+  ],
+  "power_modes": [
+   "Office",
+   "LP",
+   "HP"
+  ],
+  "power_modes2": [
+   "Office",
+   "LP",
+   "HP",
+   "Gaming+"
+  ],
+  "power_mode_tips": [
+   "Very low power consumption, highest polling rate is only supported at 125Hz",
+   "Low power consumption, moderate performance, highest polling rate supported at 1000Hz",
+   "High power consumption, excellent performance, suitable for most gaming scenarios",
+   "Best performance but also highest power consumption"
+  ],
+  "glass_mode": true,
+  "lods": [
+   "LOW",
+   "MEDIUM",
+   "HIGH"
+  ],
+  "soc": "NORDIC",
+  "working_modes": "usb,2.4g",
+  "sensor": "PAW3950"
+ },
+ {
+  "name": "ER21Pro",
+  "display_name": "ER21Pro",
+  "product_id": "2338",
+  "vendor_id": "1915",
+  "mouse": true,
+  "battery": true,
+  "light": true,
+  "polling_rates": [
+   125,
+   250,
+   500,
+   1000
+  ],
+  "cpi_range": [
+   50,
+   30000
+  ],
+  "cpi_step": 50,
+  "cpi_levels": [
+   400,
+   800,
+   1600,
+   3200,
+   0,
+   0,
+   0,
+   0
+  ],
+  "power_modes": [
+   "Office",
+   "LP",
+   "HP"
+  ],
+  "power_modes2": [
+   "Office",
+   "LP",
+   "HP",
+   "Gaming+"
+  ],
+  "power_mode_tips": [
+   "Very low power consumption, highest polling rate is only supported at 125Hz",
+   "Low power consumption, moderate performance, highest polling rate supported at 1000Hz",
+   "High power consumption, excellent performance, suitable for most gaming scenarios",
+   "Best performance but also highest power consumption"
+  ],
+  "glass_mode": true,
+  "lods": [
+   "LOW",
+   "MEDIUM",
+   "HIGH"
+  ],
+  "soc": "NORDIC",
+  "working_modes": "usb,2.4g",
+  "sensor": "PAW3950",
+  "oms": [
+   0,
+   2
+  ]
+ },
+ {
+  "name": "AK60",
+  "display_name": "AK60",
+  "product_id": "2345",
+  "vendor_id": "1915",
+  "keyboard": true,
+  "battery": false,
+  "light": true,
+  "polling_rates": [
+   125,
+   250,
+   500,
+   1000
+  ],
+  "cpi_range": [
+   50,
+   26000
+  ],
+  "cpi_step": 50,
+  "cpi_levels": [
+   400,
+   800,
+   1600,
+   3200,
+   0,
+   0,
+   0,
+   0
+  ],
+  "power_modes": [
+   "办公",
+   "低功耗",
+   "高性能"
+  ],
+  "power_modes2": [
+   "办公",
+   "低功耗",
+   "高性能",
+   "竞技+"
+  ],
+  "power_mode_tips": [
+   "功耗极低，回报率最高只支持125Hz",
+   "功耗较低，性能一般，回报率最高支持1000Hz",
+   "功耗较高，性能优秀，适合绝大多数游戏场景",
+   "在1000Hz回报率下将获得最好的竞技性能，但也会带来最大的功耗"
+  ],
+  "lods": [
+   "低",
+   "高"
+  ],
+  "soc": "HS",
+  "working_modes": "usb",
+  "report_id": 0,
+  "report_len": 32,
+  "itf_num": 1,
+  "ep_in": 131,
+  "ep_out": 4
+ },
+ {
+  "name": "Z68A",
+  "display_name": "Z68A",
+  "product_id": "2342",
+  "vendor_id": "1915",
+  "keyboard": true,
+  "battery": false,
+  "light": true,
+  "polling_rates": [
+   125,
+   250,
+   500,
+   1000
+  ],
+  "cpi_range": [
+   50,
+   26000
+  ],
+  "cpi_step": 50,
+  "cpi_levels": [
+   400,
+   800,
+   1600,
+   3200,
+   0,
+   0,
+   0,
+   0
+  ],
+  "power_modes": [
+   "办公",
+   "低功耗",
+   "高性能"
+  ],
+  "power_modes2": [
+   "办公",
+   "低功耗",
+   "高性能",
+   "竞技+"
+  ],
+  "power_mode_tips": [
+   "功耗极低，回报率最高只支持125Hz",
+   "功耗较低，性能一般，回报率最高支持1000Hz",
+   "功耗较高，性能优秀，适合绝大多数游戏场景",
+   "在1000Hz回报率下将获得最好的竞技性能，但也会带来最大的功耗"
+  ],
+  "lods": [
+   "低",
+   "高"
+  ],
+  "working_modes": "usb",
+  "report_id": 0,
+  "report_len": 32,
+  "itf_num": 1,
+  "ep_in": 131,
+  "ep_out": 4
+ },
+ {
+  "name": "RAWM DH8",
+  "display_name": "Desk HUB",
+  "product_id": "2336",
+  "vendor_id": "1915",
+  "receiver": true,
+  "boost_polling_rates": [
+   2000,
+   4000,
+   8000
+  ],
+  "soc": "NORDIC",
+  "hub": true,
+  "rf_chn": 80
+ },
+ {
+  "name": "USB Receiver 8Kn",
+  "display_name": "RAWM HS nReceiver",
+  "product_id": "2335",
+  "vendor_id": "1915",
+  "receiver": true,
+  "boost_polling_rates": [
+   2000,
+   4000,
+   8000
+  ],
+  "soc": "NORDIC"
+ },
+ {
+  "name": "ES21M",
+  "display_name": "ES21M",
+  "product_id": "2337",
+  "vendor_id": "1915",
+  "mouse": true,
+  "battery": true,
+  "light": true,
+  "polling_rates": [
+   125,
+   250,
+   500,
+   1000
+  ],
+  "cpi_range": [
+   50,
+   30000
+  ],
+  "cpi_step": 50,
+  "cpi_levels": [
+   400,
+   800,
+   1600,
+   3200,
+   0,
+   0,
+   0,
+   0
+  ],
+  "power_modes": [
+   "Office",
+   "LP",
+   "HP"
+  ],
+  "power_modes2": [
+   "Office",
+   "LP",
+   "HP",
+   "Gaming+"
+  ],
+  "power_mode_tips": [
+   "Very low power consumption, highest polling rate is only supported at 125Hz",
+   "Low power consumption, moderate performance, highest polling rate supported at 1000Hz",
+   "High power consumption, excellent performance, suitable for most gaming scenarios",
+   "Best performance but also highest power consumption"
+  ],
+  "glass_mode": true,
+  "lods": [
+   "LOW",
+   "MEDIUM",
+   "HIGH"
+  ],
+  "soc": "NORDIC",
+  "working_modes": "usb,2.4g",
+  "sensor": "PAW3950"
+ },
+ {
+  "name": "ES21Pro",
+  "display_name": "ES21Pro",
+  "product_id": "2334",
+  "vendor_id": "1915",
+  "mouse": true,
+  "battery": true,
+  "light": true,
+  "polling_rates": [
+   125,
+   250,
+   500,
+   1000
+  ],
+  "cpi_range": [
+   50,
+   30000
+  ],
+  "cpi_step": 50,
+  "cpi_levels": [
+   400,
+   800,
+   1600,
+   3200,
+   0,
+   0,
+   0,
+   0
+  ],
+  "power_modes": [
+   "Office",
+   "LP",
+   "HP"
+  ],
+  "power_modes2": [
+   "Office",
+   "LP",
+   "HP",
+   "Gaming+"
+  ],
+  "power_mode_tips": [
+   "Very low power consumption, highest polling rate is only supported at 125Hz",
+   "Low power consumption, moderate performance, highest polling rate supported at 1000Hz",
+   "High power consumption, excellent performance, suitable for most gaming scenarios",
+   "Best performance but also highest power consumption"
+  ],
+  "glass_mode": true,
+  "lods": [
+   "LOW",
+   "MEDIUM",
+   "HIGH"
+  ],
+  "soc": "NORDIC",
+  "working_modes": "usb,2.4g",
+  "sensor": "PAW3950",
+  "oms": [
+   0,
+   2
+  ]
+ },
+ {
+  "name": "SA-MH01Pro",
+  "display_name": "SA-MH01Pro",
+  "product_id": "2331",
+  "vendor_id": "1915",
+  "mouse": true,
+  "battery": true,
+  "light": true,
+  "polling_rates": [
+   125,
+   250,
+   500,
+   1000
+  ],
+  "cpi_range": [
+   50,
+   30000
+  ],
+  "cpi_step": 50,
+  "cpi_levels": [
+   400,
+   800,
+   1600,
+   3200,
+   0,
+   0,
+   0,
+   0
+  ],
+  "power_modes": [
+   "Office",
+   "LP",
+   "HP"
+  ],
+  "power_modes2": [
+   "Office",
+   "LP",
+   "HP",
+   "Gaming+"
+  ],
+  "power_mode_tips": [
+   "Very low power consumption, highest polling rate is only supported at 125Hz",
+   "Low power consumption, moderate performance, highest polling rate supported at 1000Hz",
+   "High power consumption, excellent performance, suitable for most gaming scenarios",
+   "Best performance but also highest power consumption"
+  ],
+  "glass_mode": true,
+  "lods": [
+   "LOW",
+   "MEDIUM",
+   "HIGH"
+  ],
+  "soc": "NORDIC",
+  "working_modes": "bt,usb,2.4g",
+  "sensor": "PAW3950"
+ },
+ {
+  "name": "SA-SH01Pro",
+  "display_name": "SA-SH01Pro",
+  "product_id": "2332",
+  "vendor_id": "1915",
+  "mouse": true,
+  "battery": true,
+  "light": true,
+  "polling_rates": [
+   125,
+   250,
+   500,
+   1000
+  ],
+  "cpi_range": [
+   50,
+   30000
+  ],
+  "cpi_step": 50,
+  "cpi_levels": [
+   400,
+   800,
+   1600,
+   3200,
+   0,
+   0,
+   0,
+   0
+  ],
+  "power_modes": [
+   "Office",
+   "LP",
+   "HP"
+  ],
+  "power_modes2": [
+   "Office",
+   "LP",
+   "HP",
+   "Gaming+"
+  ],
+  "power_mode_tips": [
+   "Very low power consumption, highest polling rate is only supported at 125Hz",
+   "Low power consumption, moderate performance, highest polling rate supported at 1000Hz",
+   "High power consumption, excellent performance, suitable for most gaming scenarios",
+   "Best performance but also highest power consumption"
+  ],
+  "glass_mode": true,
+  "lods": [
+   "LOW",
+   "MEDIUM",
+   "HIGH"
+  ],
+  "soc": "NORDIC",
+  "working_modes": "bt,usb,2.4g",
+  "sensor": "PAW3950"
+ },
+ {
+  "name": "SA-SH01",
+  "display_name": "SA-SH01",
+  "product_id": "232e",
+  "vendor_id": "1915",
+  "mouse": true,
+  "battery": true,
+  "light": true,
+  "polling_rates": [
+   125,
+   250,
+   500,
+   1000
+  ],
+  "cpi_range": [
+   50,
+   26000
+  ],
+  "cpi_step": 50,
+  "cpi_levels": [
+   400,
+   800,
+   1600,
+   3200,
+   0,
+   0,
+   0,
+   0
+  ],
+  "power_modes": [
+   "Office",
+   "LP",
+   "HP"
+  ],
+  "power_modes2": [
+   "Office",
+   "LP",
+   "HP",
+   "Gaming+"
+  ],
+  "power_mode_tips": [
+   "Very low power consumption, highest polling rate is only supported at 125Hz",
+   "Low power consumption, moderate performance, highest polling rate supported at 1000Hz",
+   "High power consumption, excellent performance, suitable for most gaming scenarios",
+   "Best performance but also highest power consumption"
+  ],
+  "lods": [
+   "LOW",
+   "HIGH"
+  ],
+  "soc": "NORDIC",
+  "working_modes": "bt,usb,2.4g",
+  "sensor": "PAW3395"
+ },
+ {
+  "name": "SA-SL01",
+  "display_name": "SA-SL01",
+  "product_id": "232d",
+  "vendor_id": "1915",
+  "mouse": true,
+  "battery": true,
+  "light": true,
+  "polling_rates": [
+   125,
+   250,
+   500,
+   1000
+  ],
+  "cpi_range": [
+   50,
+   26000
+  ],
+  "cpi_step": 50,
+  "cpi_levels": [
+   400,
+   800,
+   1600,
+   3200,
+   0,
+   0,
+   0,
+   0
+  ],
+  "power_modes": [
+   "Office",
+   "LP",
+   "HP"
+  ],
+  "power_modes2": [
+   "Office",
+   "LP",
+   "HP",
+   "Gaming+"
+  ],
+  "power_mode_tips": [
+   "Very low power consumption, highest polling rate is only supported at 125Hz",
+   "Low power consumption, moderate performance, highest polling rate supported at 1000Hz",
+   "High power consumption, excellent performance, suitable for most gaming scenarios",
+   "Best performance but also highest power consumption"
+  ],
+  "lods": [
+   "LOW",
+   "HIGH"
+  ],
+  "soc": "NORDIC",
+  "working_modes": "bt,usb,2.4g",
+  "sensor": "PAW3395"
+ },
+ {
+  "name": "SA-MH01",
+  "display_name": "SA-MH01",
+  "product_id": "232c",
+  "vendor_id": "1915",
+  "mouse": true,
+  "battery": true,
+  "light": true,
+  "polling_rates": [
+   125,
+   250,
+   500,
+   1000
+  ],
+  "cpi_range": [
+   50,
+   26000
+  ],
+  "cpi_step": 50,
+  "cpi_levels": [
+   400,
+   800,
+   1600,
+   3200,
+   0,
+   0,
+   0,
+   0
+  ],
+  "power_modes": [
+   "Office",
+   "LP",
+   "HP"
+  ],
+  "power_modes2": [
+   "Office",
+   "LP",
+   "HP",
+   "Gaming+"
+  ],
+  "power_mode_tips": [
+   "Very low power consumption, highest polling rate is only supported at 125Hz",
+   "Low power consumption, moderate performance, highest polling rate supported at 1000Hz",
+   "High power consumption, excellent performance, suitable for most gaming scenarios",
+   "Best performance but also highest power consumption"
+  ],
+  "lods": [
+   "LOW",
+   "HIGH"
+  ],
+  "soc": "NORDIC",
+  "working_modes": "bt,usb,2.4g",
+  "sensor": "PAW3395"
+ },
+ {
+  "name": "SA-ML01",
+  "display_name": "SA-ML01",
+  "product_id": "2329",
+  "vendor_id": "1915",
+  "mouse": true,
+  "battery": true,
+  "light": true,
+  "polling_rates": [
+   125,
+   250,
+   500,
+   1000
+  ],
+  "cpi_range": [
+   50,
+   26000
+  ],
+  "cpi_step": 50,
+  "cpi_levels": [
+   400,
+   800,
+   1600,
+   3200,
+   0,
+   0,
+   0,
+   0
+  ],
+  "power_modes": [
+   "Office",
+   "LP",
+   "HP"
+  ],
+  "power_modes2": [
+   "Office",
+   "LP",
+   "HP",
+   "Gaming+"
+  ],
+  "power_mode_tips": [
+   "Very low power consumption, highest polling rate is only supported at 125Hz",
+   "Low power consumption, moderate performance, highest polling rate supported at 1000Hz",
+   "High power consumption, excellent performance, suitable for most gaming scenarios",
+   "Best performance but also highest power consumption"
+  ],
+  "lods": [
+   "LOW",
+   "HIGH"
+  ],
+  "soc": "NORDIC",
+  "working_modes": "bt,usb,2.4g",
+  "sensor": "PAW3395"
+ },
+ {
+  "name": "USB Receiver",
+  "display_name": "RAWM Receiver",
+  "product_id": "232a",
+  "vendor_id": "1915",
+  "receiver": true,
+  "soc": "NORDIC"
+ },
+ {
+  "name": "USB Receiver 4K",
+  "display_name": "RAWM HS Receiver",
+  "product_id": "232b",
+  "vendor_id": "1915",
+  "receiver": true,
+  "light": true,
+  "boost_polling_rates": [
+   2000,
+   4000,
+   8000
+  ],
+  "soc": "NORDIC"
+ },
+ {
+  "name": "RAWM Knife",
+  "display_name": "灵刀",
+  "product_id": "2328",
+  "vendor_id": "1915",
+  "mouse": true,
+  "battery": false,
+  "light": true,
+  "polling_rates": [
+   125,
+   250,
+   500,
+   1000
+  ],
+  "cpi_range": [
+   200,
+   6200
+  ],
+  "cpi_step": 100,
+  "cpi_levels": [
+   400,
+   800,
+   1500,
+   2000,
+   3000,
+   4000,
+   5000,
+   6000
+  ],
+  "soc": "NORDIC"
+ }
+]

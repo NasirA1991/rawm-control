@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+# Run RAWM Control straight from the source tree (no install needed).
+here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+cd "$here" || exit 1
+exec python3 -m rawm_control "$@"

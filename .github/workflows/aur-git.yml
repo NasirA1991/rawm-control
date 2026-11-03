@@ -1,0 +1,34 @@
+name: Publish AUR (git)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: aur-git
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Render PKGBUILD
+        run: |
+          sed "s|@REPO@|${{ github.repository }}|g" \
+            packaging/aur/rawm-control-git/PKGBUILD.in \
+            > packaging/aur/rawm-control-git/PKGBUILD
+
+      - name: Publish rawm-control-git
+        uses: KSXGitHub/github-actions-deploy-aur@v4.2.0
+        with:
+          pkgname: rawm-control-git
+          pkgbuild: packaging/aur/rawm-control-git/PKGBUILD
+          commit_username: ${{ secrets.AUR_USERNAME }}
+          commit_email: ${{ secrets.AUR_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "rawm-control-git: sync PKGBUILD from ${{ github.sha }}"
+          allow_empty_commits: false
+          ssh_keyscan_types: ed25519,rsa,ecdsa
