@@ -59,10 +59,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if ! gh release view edge >/dev/null 2>&1; then
-            gh release create edge --prerelease --target "$GITHUB_SHA" \
+          if ! gh release view edge --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create edge --repo "$GITHUB_REPOSITORY" --prerelease --target "$GITHUB_SHA" \
               --title "Edge builds" \
               --notes "Automated builds from main. Not a stable release."
           fi
-          gh release upload edge dist/* --clobber
-          gh release view edge --json assets --jq '.assets[].name'
+          gh release upload edge dist/* --clobber --repo "$GITHUB_REPOSITORY"
+          gh release view edge --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name'
