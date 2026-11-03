@@ -45,6 +45,8 @@ jobs:
 
   aur:
     needs: release
+    # Enabled only after AUR secrets and the package exist (see docs/GITHUB_AUR.md).
+    if: ${{ vars.AUR_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

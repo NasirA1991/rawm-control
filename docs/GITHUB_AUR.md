@@ -69,6 +69,15 @@ gh secret set AUR_EMAIL    --body "you@example.com"
 | `AUR_USERNAME` | commit author name on AUR |
 | `AUR_EMAIL` | commit author email on AUR |
 
+Then create the repository variable that arms the workflows:
+
+```bash
+gh variable set AUR_ENABLED --body "true"
+```
+
+Until `AUR_ENABLED=true` exists, both AUR jobs are skipped (the CI and GitHub
+release jobs still run), so the first push does not fail while you set things up.
+
 ## 3. Create the AUR packages (one time)
 
 New AUR packages cannot always be created by the first `git push`; if the
