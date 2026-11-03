@@ -253,7 +253,8 @@ class RawmApplication(Adw.Application):
                 "reverse-engineering the RAWM HUB vendor HID protocol. "
                 "Not affiliated with RAWM / MiraclTek."
             ),
-            website="https://github.com/",
+            website="https://github.com/NasirA1991/rawm-control",
+            issue_url="https://github.com/NasirA1991/rawm-control/issues",
             license_type=Gtk.License.MIT_X11,
         )
         dialog.present(self.window)
