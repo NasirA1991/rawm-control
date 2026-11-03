@@ -1,0 +1,68 @@
+name: Edge builds
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  appimage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Version
+        id: version
+        run: |
+          VERSION=$(python3 -c "from rawm_control.config import VERSION; print(VERSION)")
+          echo "value=${VERSION}.g${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+      - name: Build AppImage
+        run: ./packaging/appimage/build.sh "${{ steps.version.outputs.value }}" dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: edge-appimage
+          path: dist/*.AppImage
+
+  flatpak:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Version
+        id: version
+        run: |
+          VERSION=$(python3 -c "from rawm_control.config import VERSION; print(VERSION)")
+          echo "value=${VERSION}.g${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+      - name: Install Flatpak tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+          sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          sudo flatpak install -y --noninteractive flathub org.gnome.Platform//50 org.gnome.Sdk//50
+      - name: Build Flatpak
+        run: ./packaging/flatpak/build.sh "${{ steps.version.outputs.value }}" dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: edge-flatpak
+          path: dist/*.flatpak
+
+  edge:
+    needs: [appimage, flatpak]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish edge release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view edge >/dev/null 2>&1; then
+            gh release create edge --prerelease --target "$GITHUB_SHA" \
+              --title "Edge builds" \
+              --notes "Automated builds from main. Not a stable release."
+          fi
+          gh release upload edge dist/* --clobber
+          gh release view edge --json assets --jq '.assets[].name'

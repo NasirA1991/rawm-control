@@ -102,6 +102,7 @@ icons via `install.sh`.
 |---|---|---|
 | `ci.yml` | push/PR | unit tests |
 | `aur-git.yml` | push `main` | `rawm-control-git` AUR |
+| `build.yml` | push `main` | edge AppImage + Flatpak, uploaded to the `edge` prerelease |
 | `release.yml` | tag `v*` | source, AppImage, Flatpak, GitHub release, stable AUR |
 
 The release workflow:

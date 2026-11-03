@@ -255,6 +255,10 @@ source tarball, AppImage, Flatpak bundle and publishes the GitHub release;
 [`.github/workflows/aur-git.yml`](.github/workflows/aur-git.yml) updates
 `rawm-control-git`.
 
+In addition, every push to `main` builds an **edge** AppImage and Flatpak
+(`.github/workflows/build.yml`) and refreshes the prerelease tagged `edge` on the
+Releases page. Tagged `v*` releases are the stable artifacts.
+
 See [docs/GITHUB_AUR.md](docs/GITHUB_AUR.md) for the one-time GitHub/AUR secret
 setup and [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md) for the packaging
 details and per-format limitations.
