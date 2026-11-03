@@ -7,6 +7,8 @@
     <name>RAWM Control contributors</name>
   </developer>
   <launchable type="desktop-id">io.github.rawmcontrol.RawmControl.desktop</launchable>
+  <url type="homepage">https://github.com/NasirA1991/rawm-control</url>
+  <url type="bugtracker">https://github.com/NasirA1991/rawm-control/issues</url>
   <metadata_license>MIT</metadata_license>
   <project_license>MIT</project_license>
   <description>

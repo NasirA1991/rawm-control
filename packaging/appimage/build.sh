@@ -15,8 +15,10 @@ cp -r rawm_control data AppDir/usr/share/rawm-control/
 find AppDir/usr/share/rawm-control -name '__pycache__' -type d -prune -exec rm -rf {} +
 install -Dm755 packaging/appimage/AppRun AppDir/AppRun
 install -Dm644 packaging/appimage/launcher.py AppDir/usr/share/rawm-control/launcher.py
+install -Dm644 data/icons/rawm-control-256.png AppDir/rawm-control.png
 install -Dm644 data/icons/hicolor/scalable/apps/rawm-control.svg AppDir/rawm-control.svg
 install -Dm644 data/io.github.rawmcontrol.RawmControl.desktop AppDir/rawm-control.desktop
+install -Dm644 data/io.github.rawmcontrol.RawmControl.desktop AppDir/usr/share/applications/rawm-control.desktop
 install -Dm644 data/io.github.rawmcontrol.RawmControl.metainfo.xml AppDir/usr/share/metainfo/io.github.rawmcontrol.RawmControl.metainfo.xml
 chmod -R a+rX AppDir
 

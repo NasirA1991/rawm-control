@@ -20,7 +20,7 @@ repository on GitHub (public, **no** README/gitignore), then:
 
 ```bash
 cd ~/Dokumenter/Projects/RAWMLinuxApp
-git remote add origin git@github.com:YOURNAME/rawm-control.git
+git remote add origin git@github.com:NasirA1991/rawm-control.git
 git push -u origin main
 ```
 
@@ -36,7 +36,7 @@ git push -u origin main
 With the GitHub CLI the whole thing is:
 
 ```bash
-gh repo create YOURNAME/rawm-control --public --source=. --remote=origin --push
+gh repo create NasirA1991/rawm-control --public --source=. --remote=origin --push
 ```
 
 The workflows use `${{ github.repository }}` when rendering PKGBUILDs, so no
@@ -87,7 +87,7 @@ through the AUR web form once.
 For `rawm-control-git`:
 
 ```bash
-./scripts/render-pkgbuild.sh YOURNAME/rawm-control
+./scripts/render-pkgbuild.sh NasirA1991/rawm-control
 # writes aur-build/rawm-control-git/{PKGBUILD,.SRCINFO}
 ```
 

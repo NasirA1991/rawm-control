@@ -19,7 +19,7 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       sha256: ${{ steps.package.outputs.sha256 }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
@@ -46,7 +46,7 @@ jobs:
           SHA=$(sha256sum "dist/rawm-control-${VERSION}.tar.gz" | cut -d' ' -f1)
           echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: source
           path: dist/rawm-control-*.tar.gz
@@ -55,12 +55,12 @@ jobs:
     needs: source
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
       - name: Build AppImage
         run: ./packaging/appimage/build.sh "${{ needs.source.outputs.version }}" dist
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: appimage
           path: dist/*.AppImage
@@ -69,7 +69,7 @@ jobs:
     needs: source
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
       - name: Install Flatpak tooling
@@ -80,7 +80,7 @@ jobs:
           sudo flatpak install -y --noninteractive flathub org.gnome.Platform//50 org.gnome.Sdk//50
       - name: Build Flatpak bundle
         run: ./packaging/flatpak/build.sh "${{ needs.source.outputs.version }}" dist
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: flatpak
           path: dist/*.flatpak
@@ -89,7 +89,7 @@ jobs:
     needs: [source, appimage, flatpak]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
@@ -107,7 +107,7 @@ jobs:
     if: vars.AUR_ENABLED == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
       - name: Render stable PKGBUILD

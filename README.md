@@ -1,5 +1,9 @@
 # RAWM Control
 
+[![CI](https://github.com/NasirA1991/rawm-control/actions/workflows/ci.yml/badge.svg)](https://github.com/NasirA1991/rawm-control/actions/workflows/ci.yml)
+[![Release](https://github.com/NasirA1991/rawm-control/actions/workflows/release.yml/badge.svg)](https://github.com/NasirA1991/rawm-control/actions/workflows/release.yml)
+
+
 Native **GTK4 / libadwaita** configuration for RAWM gaming mice on Linux — no
 browser tab, no Windows VM, no vendor service.
 
@@ -65,7 +69,7 @@ The AUR packages install the udev rule, desktop entry and tray integration.
 ### Flatpak
 
 Download `rawm-control-<version>-x86_64.flatpak` from the
-Releases page:
+[Releases page](https://github.com/NasirA1991/rawm-control/releases):
 
 ```bash
 flatpak install --user ./rawm-control-0.1.0-x86_64.flatpak
@@ -112,7 +116,7 @@ Dependencies: `python python-gobject gtk4 libadwaita python-cairo python-dbus
 hicolor-icon-theme`.
 
 ```bash
-git clone https://github.com/YOURNAME/rawm-control.git
+git clone https://github.com/NasirA1991/rawm-control.git
 cd rawm-control
 ./rawm-control --demo          # preview, no mouse required
 python3 -m rawm_control        # run from the checkout
