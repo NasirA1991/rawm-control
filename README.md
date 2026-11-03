@@ -196,7 +196,11 @@ access, which the manifest already declares.
 ## Supported devices
 
 The protocol is shared across the current RAWM family. The bundled capability
-table (from the vendor's own device database) covers:
+table comes from the vendor's own device database. **Hardware verification so
+far is limited to the ER21Pro** (direct and through an HS Receiver); the other
+rows are supported by the capability database and the same protocol, but have
+not been tested on physical units. Reports with model, PID and firmware are
+very welcome.
 
 | Model | USB ID | Direct / own dongle | With 8K receiver |
 |-------|--------|--------------------:|-----------------:|

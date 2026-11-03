@@ -34,7 +34,15 @@ if [[ -n "${SUDO_USER:-}" ]]; then
     rm -f "$HOME_DIR/.local/share/applications/io.github.rawmcontrol.RawmControl.desktop"
     rm -f "$HOME_DIR/.local/share/metainfo/io.github.rawmcontrol.RawmControl.metainfo.xml"
     rm -f "$HOME_DIR/.local/share/icons/hicolor/scalable/apps/rawm-control.svg"
+    rm -f "$HOME_DIR"/.local/share/icons/hicolor/scalable/actions/rawm-*-symbolic.svg
     rm -f "$HOME_DIR/.local/share/icons/hicolor/256x256/apps/rawm-control.png"
+    rm -f "$HOME_DIR/.local/share/metainfo/io.github.rawmcontrol.RawmControl.metainfo.xml"
+    if command -v update-desktop-database >/dev/null; then
+        sudo -u "$SUDO_USER" update-desktop-database "$HOME_DIR/.local/share/applications" >/dev/null 2>&1 || true
+    fi
+    if command -v gtk-update-icon-cache >/dev/null; then
+        sudo -u "$SUDO_USER" gtk-update-icon-cache -q -t "$HOME_DIR/.local/share/icons/hicolor" >/dev/null 2>&1 || true
+    fi
 fi
 
 command -v update-desktop-database >/dev/null && update-desktop-database "$APPDIR" >/dev/null 2>&1 || true

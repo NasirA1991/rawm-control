@@ -22,10 +22,16 @@ install -Dm644 data/io.github.rawmcontrol.RawmControl.desktop AppDir/usr/share/a
 install -Dm644 data/io.github.rawmcontrol.RawmControl.metainfo.xml AppDir/usr/share/metainfo/io.github.rawmcontrol.RawmControl.metainfo.xml
 chmod -R a+rX AppDir
 
-tool="${APPIMAGETOOL:-/tmp/appimagetool-x86_64.AppImage}"
-if [[ ! -x "$tool" ]]; then
-    curl -fsSL "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage" -o "$tool"
-    chmod +x "$tool"
+tool="${APPIMAGETOOL:-/tmp/appimagetool-1.9.1-x86_64.AppImage}"
+if [[ -z "${APPIMAGETOOL:-}" ]]; then
+    # Pinned release + checksum: never execute a floating "continuous" build.
+    tool_version="1.9.1"
+    sha256="ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0"
+    if [[ ! -x "$tool" ]] || ! printf '%s  %s\n' "$sha256" "$tool" | sha256sum -c - >/dev/null 2>&1; then
+        curl -fsSL "https://github.com/AppImage/appimagetool/releases/download/${tool_version}/appimagetool-x86_64.AppImage" -o "$tool"
+        chmod +x "$tool"
+    fi
+    printf '%s  %s\n' "$sha256" "$tool" | sha256sum -c -
 fi
 
 ARCH=x86_64 "$tool" --appimage-extract-and-run "AppDir" "$out/rawm-control-${version}-x86_64.AppImage"

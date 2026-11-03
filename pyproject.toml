@@ -26,7 +26,10 @@ rawm-control = "rawm_control.app:main"
 rawmctl = "rawm_control.app:main"
 
 [project.urls]
-Documentation = "https://github.com/"
+Homepage = "https://github.com/NasirA1991/rawm-control"
+Repository = "https://github.com/NasirA1991/rawm-control"
+Issues = "https://github.com/NasirA1991/rawm-control/issues"
+Documentation = "https://github.com/NasirA1991/rawm-control#readme"
 
 [tool.setuptools]
 packages = ["rawm_control"]

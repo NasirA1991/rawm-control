@@ -39,8 +39,9 @@ Build:
 # -> dist/rawm-control-0.1.1-x86_64.AppImage
 ```
 
-It downloads `appimagetool` to `/tmp` and uses
-`--appimage-extract-and-run`, so FUSE is not required.
+It downloads a **pinned** `appimagetool` 1.9.1 release to `/tmp`, verifies its
+SHA-256 before execution, and uses `--appimage-extract-and-run`, so FUSE is not
+required. Floating `continuous` builds are not used.
 
 ## Flatpak
 
@@ -139,8 +140,12 @@ python3 -m unittest discover -s tests -v
 - **AUR** — `rawm-control` and `rawm-control-git` are live, maintainer
   `nasir91`; `aur-git.yml` has published successfully. Both PKGBUILDs pass
   `makepkg --printsrcinfo` on Arch/CachyOS.
-- **AppImage** — built with `packaging/appimage/build.sh`, then launched with
-  `--demo` under Xvfb; CLI (`--version`, `--cli status`) and the GUI both work.
+- **AppImage** — built with `packaging/appimage/build.sh` and the pinned
+  appimagetool 1.9.1, then launched with `--demo` under Xvfb; CLI
+  (`--version`, `--cli status`) and the GUI both work.
+- **Worker lifecycle** — regression tests cover receiver metadata surviving a
+  refresh and the disconnected-node path that previously raised `NameError`;
+  both are also exercised against real ER21Pro + HS Receiver hardware.
 - **Flatpak** — built against `org.gnome.Platform//50`, installed, and checked
   for Python/dbus imports, hidraw access and the StatusNotifierItem menu (KDE).
 - **GitHub workflows** — validated with `actionlint` 1.7.12. They have not been

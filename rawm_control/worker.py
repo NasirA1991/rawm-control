@@ -222,15 +222,20 @@ class DeviceWorker:
         if self._device is not None:
             self._device.close()
         self._device = None
+        self._via_receiver = False
+        self._receiver_pid = None
+        self._query_misses = 0
         with self._lock:
             self._state = MouseState()
             self._pending_state = None
         self._emit_link(False, reason)
 
     def _perform_query(self) -> None:
-        assert self._device is not None
+        device = self._device
+        if device is None:
+            return
         try:
-            state, frames = self._device.query(timeout=1.4)
+            state, frames = device.query(timeout=1.4)
         except ProtocolError as exc:
             self._disconnect(str(exc))
             return
@@ -242,16 +247,17 @@ class DeviceWorker:
                 self._disconnect("device disappeared")
             return
         self._query_misses = 0
-        self._via_receiver = False
-        self._receiver_pid: int | None = None
+        # Receiver metadata belongs to the connection, not to the JSON query
+        # result.  A refresh must not downgrade an 8K receiver link to a
+        # direct 2.4 GHz one.
+        state.via_receiver = self._via_receiver
+        state.receiver_product_id = self._receiver_pid
         apply_notifications(state, frames)
         with self._lock:
             previous = self._state
             # keep values only the notifications know about
             state.battery_levels = previous.battery_levels or state.battery_levels
             state.rssi = previous.rssi
-            state.via_receiver = self._via_receiver
-            state.receiver_product_id = self._receiver_pid
             self._state = state
         self._last_query = time.monotonic()
         self._emit_state(set())
@@ -276,6 +282,8 @@ class DeviceWorker:
         try:
             if pending_state is not None:
                 device.set_state(pending_state)
+                pending_state.via_receiver = self._via_receiver
+                pending_state.receiver_product_id = self._receiver_pid
                 with self._lock:
                     self._state = copy.deepcopy(pending_state)
                 self._confirm_at = time.monotonic() + 0.4
