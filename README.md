@@ -72,7 +72,7 @@ Download `rawm-control-<version>-x86_64.flatpak` from the
 [Releases page](https://github.com/NasirA1991/rawm-control/releases):
 
 ```bash
-flatpak install --user ./rawm-control-0.1.0-x86_64.flatpak
+flatpak install --user ./rawm-control-0.1.1-x86_64.flatpak
 flatpak run io.github.rawmcontrol.RawmControl
 ```
 
@@ -89,8 +89,8 @@ to the vendor HID collection (see [Permissions](#permissions)).
 Download `rawm-control-<version>-x86_64.AppImage`, then:
 
 ```bash
-chmod +x rawm-control-0.1.0-x86_64.AppImage
-./rawm-control-0.1.0-x86_64.AppImage
+chmod +x rawm-control-0.1.1-x86_64.AppImage
+./rawm-control-0.1.1-x86_64.AppImage
 ```
 
 The AppImage intentionally bundles only the application. It uses the host's
@@ -236,8 +236,8 @@ receivers and their paired mouse.
 ```bash
 python3 -m unittest discover -s tests -v
 RAWM_HW_TEST=1 python3 -m unittest tests.test_hardware -v
-./packaging/appimage/build.sh 0.1.0 dist
-./packaging/flatpak/build.sh 0.1.0 dist
+./packaging/appimage/build.sh 0.1.1 dist
+./packaging/flatpak/build.sh 0.1.1 dist
 ```
 
 `tools/` contains the reverse-engineering helpers:

@@ -35,8 +35,8 @@ alternative.
 Build:
 
 ```bash
-./packaging/appimage/build.sh 0.1.0 dist
-# -> dist/rawm-control-0.1.0-x86_64.AppImage
+./packaging/appimage/build.sh 0.1.1 dist
+# -> dist/rawm-control-0.1.1-x86_64.AppImage
 ```
 
 It downloads `appimagetool` to `/tmp` and uses
@@ -65,14 +65,14 @@ not the `org.kde` naming convention.
 Build (needs `flatpak-builder` and the GNOME 50 runtime/SDK):
 
 ```bash
-./packaging/flatpak/build.sh 0.1.0 dist
-# -> dist/rawm-control-0.1.0-x86_64.flatpak
+./packaging/flatpak/build.sh 0.1.1 dist
+# -> dist/rawm-control-0.1.1-x86_64.flatpak
 ```
 
 Install:
 
 ```bash
-flatpak install --user ./rawm-control-0.1.0-x86_64.flatpak
+flatpak install --user ./rawm-control-0.1.1-x86_64.flatpak
 flatpak run io.github.rawmcontrol.RawmControl
 ```
 
@@ -129,7 +129,7 @@ AUR jobs are gated behind the `AUR_ENABLED` repository variable; see
 python3 -m unittest discover -s tests -v
 ./packaging/appimage/build.sh "$(python3 -c 'from rawm_control.config import VERSION; print(VERSION)')" dist
 # Flatpak requires flatpak-builder + GNOME 50 runtime/SDK:
-./packaging/flatpak/build.sh 0.1.0 dist
+./packaging/flatpak/build.sh 0.1.1 dist
 ```
 
 

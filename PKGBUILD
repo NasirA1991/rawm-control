@@ -1,7 +1,7 @@
 # Maintainer: RAWM Control contributors
 # Local build: run `makepkg -si` inside this repository.
 pkgname=rawm-control
-pkgver=0.1.0
+pkgver=0.1.1
 pkgrel=1
 pkgdesc="Native GTK4/libadwaita configuration tool for RAWM gaming mice"
 arch=('any')

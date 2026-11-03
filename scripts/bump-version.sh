@@ -23,6 +23,13 @@ s, n = re.subn(r'^version = "[^"]+"', f'version = "{version}"', s, flags=re.M)
 assert n == 1, "project version not found"
 p.write_text(s)
 
+for pkgbuild in ("PKGBUILD", "packaging/aur/rawm-control-git/PKGBUILD.in"):
+    p = Path(pkgbuild)
+    s = p.read_text()
+    s, n = re.subn(r'^pkgver=.*$', f'pkgver={version}', s, flags=re.M)
+    assert n == 1, f"pkgver not found in {pkgbuild}"
+    p.write_text(s)
+
 p = Path("data/io.github.rawmcontrol.RawmControl.metainfo.xml")
 s = p.read_text()
 entry = f'    <release version="{version}" date="{date_str}"/>\n'
