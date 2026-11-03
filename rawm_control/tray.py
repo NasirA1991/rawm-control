@@ -309,9 +309,15 @@ class Tray(dbus.service.Object):
         self.polling_rates = [125, 250, 500, 1000]
         self._icon = render_tray_icon(None, False, self.style)
 
-        self.bus_name = dbus.service.BusName(
-            f"org.kde.StatusNotifierItem-{os.getpid()}-1", self.bus, do_not_queue=True
-        )
+        # Flatpak does not allow owning the conventional PID-based SNI name
+        # (wildcards are invalid), so inside the sandbox use a name derived from
+        # the app ID.  SNI hosts accept any registered service name.
+        flatpak_id = os.environ.get("FLATPAK_ID")
+        if flatpak_id:
+            sni_name = f"{flatpak_id}.StatusNotifierItem"
+        else:
+            sni_name = f"org.kde.StatusNotifierItem-{os.getpid()}-1"
+        self.bus_name = dbus.service.BusName(sni_name, self.bus, do_not_queue=True)
         dbus.service.Object.__init__(self, self.bus_name, "/StatusNotifierItem")
         self.menu = TrayMenu(self)
 

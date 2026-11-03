@@ -13,3 +13,11 @@ pkg/
 packaging/aur/**/PKGBUILD
 packaging/aur/**/.SRCINFO
 aur-build/
+
+# local Flatpak/AppImage builds
+.flatpak-builder/
+flatpak-build/
+flatpak-repo/
+*.flatpak
+AppDir/
+dist/

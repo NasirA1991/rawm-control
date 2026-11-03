@@ -1,0 +1,52 @@
+app-id: io.github.rawmcontrol.RawmControl
+runtime: org.gnome.Platform
+runtime-version: '50'
+sdk: org.gnome.Sdk
+command: rawm-control
+
+finish-args:
+  # GTK4 / Wayland
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  # Vendor HID collection (/dev/hidraw*) needs raw device access
+  - --device=all
+  # StatusNotifierItem tray (KDE and AppIndicator hosts)
+  - --talk-name=org.kde.StatusNotifierWatcher
+  - --own-name=io.github.rawmcontrol.RawmControl.StatusNotifierItem
+  # Notifications
+  - --talk-name=org.freedesktop.Notifications
+
+modules:
+  # The GNOME runtime ships Python 3, PyGObject, GTK4, libadwaita and pycairo,
+  # but not dbus-python, which the tray needs.
+  - name: dbus-python
+    buildsystem: meson
+    config-opts:
+      - -Dtests=disabled
+      - -Ddoc=disabled
+    sources:
+      - type: archive
+        url: https://files.pythonhosted.org/packages/f3/cc/23f24bc7cbfec3a0ab508b7e11bc98837d77a91445d5f666a8545353a147/dbus_python-1.5.1.tar.gz
+        sha256: 57423cf87d09b7d084f420b55b737fe654c33339b06df77945620d97795c6ac4
+
+  - name: rawm-control
+    buildsystem: simple
+    build-commands:
+      - install -d /app/share/rawm-control
+      - cp -r rawm_control data /app/share/rawm-control/
+      - find /app/share/rawm-control -name __pycache__ -type d -prune -exec rm -rf {} +
+      - install -Dm755 packaging/flatpak/rawm-control.sh /app/bin/rawm-control
+      - install -Dm644 packaging/flatpak/launcher.py /app/share/rawm-control/launcher.py
+      - install -Dm644 data/io.github.rawmcontrol.RawmControl.desktop /app/share/applications/io.github.rawmcontrol.RawmControl.desktop
+      - sed -i 's/^Icon=.*/Icon=io.github.rawmcontrol.RawmControl/' /app/share/applications/io.github.rawmcontrol.RawmControl.desktop
+      - install -Dm644 data/io.github.rawmcontrol.RawmControl.metainfo.xml /app/share/metainfo/io.github.rawmcontrol.RawmControl.metainfo.xml
+      - install -Dm644 data/icons/hicolor/scalable/apps/rawm-control.svg /app/share/icons/hicolor/scalable/apps/rawm-control.svg
+      - install -Dm644 data/icons/hicolor/scalable/apps/rawm-control.svg /app/share/icons/hicolor/scalable/apps/io.github.rawmcontrol.RawmControl.svg
+      - install -Dm644 data/icons/hicolor/scalable/actions/rawm-device-symbolic.svg /app/share/icons/hicolor/scalable/actions/rawm-device-symbolic.svg
+      - install -Dm644 data/icons/hicolor/scalable/actions/rawm-performance-symbolic.svg /app/share/icons/hicolor/scalable/actions/rawm-performance-symbolic.svg
+      - install -Dm644 data/icons/hicolor/scalable/actions/rawm-dpi-symbolic.svg /app/share/icons/hicolor/scalable/actions/rawm-dpi-symbolic.svg
+      - install -Dm644 data/icons/hicolor/scalable/actions/rawm-lighting-symbolic.svg /app/share/icons/hicolor/scalable/actions/rawm-lighting-symbolic.svg
+    sources:
+      - type: dir
+        path: ../..

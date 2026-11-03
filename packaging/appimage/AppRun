@@ -1,0 +1,5 @@
+#!/bin/sh
+# The AppImage bundles RAWM Control only; it uses the host's Python, GTK4,
+# libadwaita, PyGObject, pycairo and dbus-python.  Flatpak is the fully
+# self-contained option.
+exec python3 "$APPDIR/usr/share/rawm-control/launcher.py" "$@"

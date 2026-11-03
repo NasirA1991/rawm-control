@@ -6,7 +6,7 @@ This repository is wired up for:
 |---|---|---|
 | `.github/workflows/ci.yml` | every push / PR | runs the 29 unit tests on Ubuntu |
 | `.github/workflows/aur-git.yml` | every push to `main` | publishes the `rawm-control-git` AUR package |
-| `.github/workflows/release.yml` | tags `v*` | builds a source tarball, creates the GitHub release, publishes the stable `rawm-control` AUR package |
+| `.github/workflows/release.yml` | tags `v*` | builds source/AppImage/Flatpak, creates the GitHub release, publishes the stable `rawm-control` AUR package |
 
 AUR package names `rawm-control` and `rawm-control-git` were free when this was
 written. Both are built from this repository; no binaries are hosted.
@@ -107,9 +107,10 @@ push.
   `pkgver()` derives a new version, so `yay -Syu` rebuilds it with your latest
   code.
 - **Tag `vX.Y.Z`** → `release.yml` checks that the tag matches
-  `rawm_control/config.py`, creates a source tarball, publishes a GitHub
-  release, renders the stable PKGBUILD with that tarball's SHA-256, and pushes
-  it to AUR.
+  `rawm_control/config.py`, builds the source tarball, AppImage and Flatpak,
+  publishes a GitHub release with all three, renders the stable PKGBUILD with
+  the tarball's SHA-256, and pushes it to AUR. See
+  [DISTRIBUTION.md](DISTRIBUTION.md).
 
 ### Making a release
 
