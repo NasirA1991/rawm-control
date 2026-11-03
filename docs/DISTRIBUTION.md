@@ -136,8 +136,9 @@ python3 -m unittest discover -s tests -v
 
 ## Verification status
 
-- **AUR templates** — `makepkg --printsrcinfo` succeeds for both packages
-  (Arch/CachyOS).
+- **AUR** — `rawm-control` and `rawm-control-git` are live, maintainer
+  `nasir91`; `aur-git.yml` has published successfully. Both PKGBUILDs pass
+  `makepkg --printsrcinfo` on Arch/CachyOS.
 - **AppImage** — built with `packaging/appimage/build.sh`, then launched with
   `--demo` under Xvfb; CLI (`--version`, `--cli status`) and the GUI both work.
 - **Flatpak** — built against `org.gnome.Platform//50`, installed, and checked

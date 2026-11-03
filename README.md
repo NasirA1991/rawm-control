@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/NasirA1991/rawm-control/actions/workflows/ci.yml/badge.svg)](https://github.com/NasirA1991/rawm-control/actions/workflows/ci.yml)
 [![Release](https://github.com/NasirA1991/rawm-control/actions/workflows/release.yml/badge.svg)](https://github.com/NasirA1991/rawm-control/actions/workflows/release.yml)
+[![AUR](https://img.shields.io/aur/version/rawm-control?label=AUR)](https://aur.archlinux.org/packages/rawm-control)
+[![AUR git](https://img.shields.io/aur/version/rawm-control-git?label=AUR%20git)](https://aur.archlinux.org/packages/rawm-control-git)
 
 
 Native **GTK4 / libadwaita** configuration for RAWM gaming mice on Linux — no
@@ -60,9 +62,11 @@ release. Pick the format that matches your system:
 
 ```bash
 yay -S rawm-control-git     # latest main, rebuilt on updates
-# or, after a tagged release:
-yay -S rawm-control
+yay -S rawm-control         # latest tagged release
 ```
+
+Both are published: [rawm-control](https://aur.archlinux.org/packages/rawm-control)
+· [rawm-control-git](https://aur.archlinux.org/packages/rawm-control-git).
 
 The AUR packages install the udev rule, desktop entry and tray integration.
 

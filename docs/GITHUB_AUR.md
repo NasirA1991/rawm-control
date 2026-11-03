@@ -8,8 +8,15 @@ This repository is wired up for:
 | `.github/workflows/aur-git.yml` | every push to `main` | publishes the `rawm-control-git` AUR package |
 | `.github/workflows/release.yml` | tags `v*` | builds source/AppImage/Flatpak, creates the GitHub release, publishes the stable `rawm-control` AUR package |
 
-AUR package names `rawm-control` and `rawm-control-git` were free when this was
-written. Both are built from this repository; no binaries are hosted.
+Both AUR packages are **published**:
+
+- https://aur.archlinux.org/packages/rawm-control
+- https://aur.archlinux.org/packages/rawm-control-git
+
+They were bootstrapped by cloning the empty AUR repositories and pushing the
+initial `PKGBUILD`/`.SRCINFO`/`LICENSE` (no web form needed). `AUR_ENABLED=true`
+is set, the AUR SSH key is stored as a secret, and `aur-git.yml` has been run
+successfully with maintainer `nasir91`.
 
 ---
 
@@ -75,29 +82,23 @@ Then create the repository variable that arms the workflows:
 gh variable set AUR_ENABLED --body "true"
 ```
 
-Until `AUR_ENABLED=true` exists, both AUR jobs are skipped (the CI and GitHub
-release jobs still run), so the first push does not fail while you set things up.
+`AUR_ENABLED=true` is now set, so both AUR jobs run. Without the variable they
+are skipped and only CI/release jobs run.
 
-## 3. Create the AUR packages (one time)
+## 3. Create the AUR packages (one time, done)
 
-New AUR packages cannot always be created by the first `git push`; if the
-deploy action fails with *repository not found*, submit the initial PKGBUILD
-through the AUR web form once.
-
-For `rawm-control-git`:
+AUR now supports bootstrapping from an empty repository. For each package:
 
 ```bash
-./scripts/render-pkgbuild.sh NasirA1991/rawm-control
-# writes aur-build/rawm-control-git/{PKGBUILD,.SRCINFO}
+export GIT_SSH_COMMAND="ssh -o IdentitiesOnly=yes -i ~/.ssh/aur_rawm"
+git clone ssh://aur@aur.archlinux.org/rawm-control-git.git
+# add PKGBUILD, .SRCINFO and LICENSE, commit, then:
+git push origin master
 ```
 
-Go to <https://aur.archlinux.org/submit/>, upload/submit that PKGBUILD
-(or paste it), and let the AUR create the package. The next workflow run can
-push updates.
-
-The stable `rawm-control` package is created the same way after the first
-release, or by the first successful `release.yml` run if the AUR accepts the
-push.
+The initial packages were created this way; no web submission was required.
+The `.SRCINFO` must always be regenerated with `makepkg --printsrcinfo` before
+pushing metadata changes, and AUR only accepts the `master` branch.
 
 ## 4. Day-to-day: what happens on a change
 
