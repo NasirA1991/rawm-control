@@ -18,18 +18,6 @@ directly, using a protocol recovered from that web driver. It was developed and
 verified against an **ER21Pro** (`1915:2338`), both over its own link and through
 the **RAWM HS Receiver** (`1915:232b`).
 
-![Device page](docs/screenshots/device.png)
-
-<sub>Screenshots are rendered by the built-in demo mode (`--demo`).</sub>
-
-> **Hardware status:** only the **ER21Pro** has been verified on physical
-> hardware. Other RAWM models use the same protocol and capability database,
-> but are not confirmed. [Send a read-only device report](docs/DEVICE_REPORTS.md)
-> if you have another model.
-
-> **Development disclosure:** RAWM Control was built with AI assistance. It is
-> an independent project and is not affiliated with RAWM or MiraclTek.
-
 ## Quick install
 
 **Arch, CachyOS or EndeavourOS:** use `paru`, `yay`, or any other AUR helper.
@@ -47,6 +35,18 @@ see [Installation](#installation) for dependencies and source builds.
 · [Permissions](#permissions) · [Usage](#usage)
 · [Supported devices](#supported-devices) · [Limitations](#limitations)
 · [Troubleshooting](#troubleshooting) · [Contributing](#contributing)
+
+> **Hardware status:** only the **ER21Pro** has been verified on physical
+> hardware. Other RAWM models use the same protocol and capability database,
+> but are not confirmed. [Send a read-only device report](docs/DEVICE_REPORTS.md)
+> if you have another model.
+
+> **Development disclosure:** RAWM Control was built with AI assistance. It is
+> an independent project and is not affiliated with RAWM or MiraclTek.
+
+![Device page](docs/screenshots/device.png)
+
+<sub>Screenshots are rendered by the built-in demo mode (`--demo`).</sub>
 
 ## Features
 
