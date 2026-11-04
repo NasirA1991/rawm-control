@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Render the AUR -git PKGBUILD locally for a first-time AUR submission.
+# Render the AUR -git PKGBUILD locally.
 #
 #   ./scripts/render-pkgbuild.sh [owner/repo] [output-dir]
 #
@@ -21,4 +21,3 @@ sed "s|@REPO@|${repo}|g" packaging/aur/rawm-control-git/PKGBUILD.in > "$out/rawm
     makepkg --printsrcinfo > .SRCINFO
 )
 echo "Rendered $out/rawm-control-git/{PKGBUILD,.SRCINFO} for ${repo}"
-echo "Submit that directory at https://aur.archlinux.org/submit/"

@@ -63,22 +63,19 @@ release. Pick the format that matches your system:
 | **AUR** `rawm-control` / `rawm-control-git` | Arch, CachyOS, EndeavourOS | source; builds against your system |
 | **Flatpak** `.flatpak` | any distro with Flatpak | GNOME runtime: Python, GTK4, libadwaita, PyGObject, dbus-python |
 | **AppImage** `.AppImage` | quick run anywhere with GTK4 installed | the app only; host provides GTK4/PyGObject |
-| **Source tarball** | packaging, auditing, hacking | source + install script |
+| **Source tarball** | packaging and auditing | source + install script |
 
 ### Arch / CachyOS (AUR)
 
 ```bash
-yay -S rawm-control-git     # latest main, rebuilt on updates
-yay -S rawm-control         # latest tagged release
+paru -S rawm-control-git     # latest main, rebuilt on updates
+paru -S rawm-control         # latest tagged release
 ```
 
 Both are published: [rawm-control](https://aur.archlinux.org/packages/rawm-control)
 · [rawm-control-git](https://aur.archlinux.org/packages/rawm-control-git).
 
-`rawm-control-git` is a VCS package: the AUR page shows the base version
-(0.1.2), while the installed version is built from `pkgver()` as
-`0.1.2.rN.gHASH`. It tracks `main`, so `paru -Syu` rebuilds it with the latest
-code even when the AUR PKGBUILD itself has not changed.
+`rawm-control-git` tracks `main`; `paru -Syu` rebuilds it with the latest code.
 
 The AUR packages install the udev rule, desktop entry and tray integration.
 
@@ -88,7 +85,7 @@ Download `rawm-control-<version>-x86_64.flatpak` from the
 [Releases page](https://github.com/NasirA1991/rawm-control/releases):
 
 ```bash
-flatpak install --user ./rawm-control-0.1.1-x86_64.flatpak
+flatpak install --user ./rawm-control-0.1.4-x86_64.flatpak
 flatpak run io.github.rawmcontrol.RawmControl
 ```
 
@@ -96,17 +93,16 @@ The Flatpak is fully self-contained and exposes `/dev/hidraw*` via
 `--device=all`. If the mouse is not detected, make sure the host grants access
 to the vendor HID collection (see [Permissions](#permissions)).
 
-> The manifest is ready for building a bundle, but this repository does **not**
-> publish to Flathub. Flathub has its own review and policy requirements; a
-> self-hosted `.flatpak` on GitHub Releases is the supported path here.
+The Flatpak is distributed self-hosted on GitHub Releases; it is not on
+Flathub.
 
 ### AppImage
 
 Download `rawm-control-<version>-x86_64.AppImage`, then:
 
 ```bash
-chmod +x rawm-control-0.1.1-x86_64.AppImage
-./rawm-control-0.1.1-x86_64.AppImage
+chmod +x rawm-control-0.1.4-x86_64.AppImage
+./rawm-control-0.1.4-x86_64.AppImage
 ```
 
 The AppImage intentionally bundles only the application. It uses the host's
@@ -122,9 +118,8 @@ sudo apt install python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 python3-cairo python3-db
 sudo dnf install python3-gobject gtk4 libadwaita python3-cairo python3-dbus hicolor-icon-theme
 ```
 
-A fully self-contained bundle is the Flatpak above; AppImage cannot reliably
-bundle PyGObject/GTK4 without shipping a very large, fragile tree. The release
-AppImage was smoke-tested on CachyOS.
+A fully self-contained bundle is the Flatpak above. The AppImage intentionally
+uses the host's GTK4 stack instead of shipping a large, fragile copy.
 
 ### From source
 
@@ -272,16 +267,18 @@ receivers and their paired mouse.
   extension.
 - **AppImage won't start** — install the GTK4/PyGObject dependencies above, or
   use the Flatpak.
-- **Tray submenu doesn't open on KDE** — use a build from this repository; the
-  DBusMenu `AboutToShow` contract is required and was fixed in 0.1.0.
+- **Tray submenu doesn't open on KDE** — update to the latest release; older
+  builds lacked the required DBusMenu `AboutToShow` behaviour.
 
 ## Development
 
 ```bash
 python3 -m unittest discover -s tests -v
 RAWM_HW_TEST=1 python3 -m unittest tests.test_hardware -v
-./packaging/appimage/build.sh 0.1.1 dist
-./packaging/flatpak/build.sh 0.1.1 dist
+
+version=$(python3 -c "from rawm_control.config import VERSION; print(VERSION)")
+./packaging/appimage/build.sh "$version" dist
+./packaging/flatpak/build.sh "$version" dist
 ```
 
 `tools/` contains the reverse-engineering helpers:
@@ -291,21 +288,18 @@ RAWM_HW_TEST=1 python3 -m unittest tests.test_hardware -v
 - `tools/rawm_proto.py` — protocol playground (scan, query, frame dump).
 - `tools/tray_mockups.py` / `tools/tray_styles.py` — tray icon renders.
 
-## Releases, AUR and builds
+## Contributing
 
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs the tests;
-[`.github/workflows/release.yml`](.github/workflows/release.yml) builds the
-source tarball, AppImage, Flatpak bundle and publishes the GitHub release;
-[`.github/workflows/aur-git.yml`](.github/workflows/aur-git.yml) updates
-`rawm-control-git`.
+Bug reports, device reports and pull requests are welcome. Run the tests before
+sending a change:
 
-In addition, every push to `main` builds an **edge** AppImage and Flatpak
-(`.github/workflows/build.yml`) and refreshes the prerelease tagged `edge` on the
-Releases page. Tagged `v*` releases are the stable artifacts.
+```bash
+python3 -m unittest discover -s tests -v
+```
 
-See [docs/GITHUB_AUR.md](docs/GITHUB_AUR.md) for the one-time GitHub/AUR secret
-setup and [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md) for the packaging
-details and per-format limitations.
+For a new mouse model, include a
+[read-only device report](docs/DEVICE_REPORTS.md) in the issue. Protocol changes
+should keep [docs/PROTOCOL.md](docs/PROTOCOL.md) and the tests in sync.
 
 ## How it works
 

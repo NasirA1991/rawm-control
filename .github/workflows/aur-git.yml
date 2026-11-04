@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   publish:
-    # Enabled only after AUR secrets and the package exist (see docs/GITHUB_AUR.md).
+    # Enabled only after the AUR secrets and package exist.
     if: ${{ vars.AUR_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     steps:
