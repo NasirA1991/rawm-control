@@ -26,7 +26,12 @@ the **RAWM HS Receiver** (`1915:232b`).
 > **Development disclosure:** RAWM Control was built with AI assistance. It is
 > an independent project and is not affiliated with RAWM or MiraclTek.
 
-**Quick start:** Arch/CachyOS users can run `paru -S rawm-control-git`.
+**Jump to:** [Features](#features) · [Install](#install) · [Permissions](#permissions)
+· [Usage](#usage) · [Supported devices](#supported-devices)
+· [Limitations](#limitations) · [Troubleshooting](#troubleshooting)
+· [Contributing](#contributing)
+
+**Quick install:** Arch/CachyOS users can run `paru -S rawm-control-git`.
 Everyone else can grab the latest **Flatpak** or **AppImage** from the
 [releases page](https://github.com/NasirA1991/rawm-control/releases/latest).
 
