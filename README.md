@@ -226,8 +226,10 @@ for the technical details.
 ## Troubleshooting
 
 - **Permission denied** — install the udev rule above and replug the receiver.
-- **Mouse asleep** — move it or turn it on; the receiver banner has a Retry
-  button.
+- **Mouse asleep / battery still shown after turning it off** — move it or
+  turn it on; a manual refresh clears the connection immediately, and the
+  background poll disconnects after two missed replies. The receiver banner has
+  a Retry button.
 - **Settings don't stick** — close RAWM HUB or any other configurator; two
   writers conflict.
 - **No tray icon on GNOME** — install an AppIndicator extension.

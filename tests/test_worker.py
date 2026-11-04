@@ -71,6 +71,25 @@ class WorkerLifecycleTest(unittest.TestCase):
         self.assertEqual(state.product_id, 0x2338)
         self.assertTrue(states)
 
+    def test_user_refresh_disconnects_immediately_on_miss(self):
+        worker, _states, links, _writes = self.make_worker()
+        fake = FakeDevice("/dev/null", result=(None, []))
+        worker._device = fake
+        worker._perform_query(requested=True)
+        self.assertIsNone(worker._device)
+        self.assertTrue(fake.closed)
+        self.assertFalse(links[-1][0])
+
+    def test_periodic_poll_tolerates_one_miss_then_disconnects(self):
+        worker, _states, links, _writes = self.make_worker()
+        fake = FakeDevice("/dev/null", result=(None, []))
+        worker._device = fake
+        worker._perform_query()
+        self.assertIsNotNone(worker._device)
+        worker._perform_query()
+        self.assertIsNone(worker._device)
+        self.assertFalse(links[-1][0])
+
     def test_missing_node_after_misses_disconnects_without_nameerror(self):
         worker, _states, links, _writes = self.make_worker()
         path = "/tmp/rawm-control-node-that-does-not-exist"

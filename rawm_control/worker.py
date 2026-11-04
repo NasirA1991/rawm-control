@@ -44,6 +44,7 @@ class DeviceWorker:
         self.refresh_seconds = refresh_seconds
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
+        self._wake = threading.Event()
         self._lock = threading.Lock()
         self._pending_patch: dict | None = None
         self._pending_sleep: int | None = None
@@ -73,6 +74,7 @@ class DeviceWorker:
 
     def stop(self, timeout: float = 2.0) -> None:
         self._stop.set()
+        self._wake.set()
         thread = self._thread
         if thread and thread.is_alive():
             thread.join(timeout)
@@ -144,6 +146,7 @@ class DeviceWorker:
     def refresh(self) -> None:
         with self._lock:
             self._force_query = True
+        self._wake.set()
 
     def request_rssi(self) -> None:
         with self._lock:
@@ -306,7 +309,7 @@ class DeviceWorker:
             self._pending_patch = None
         self._emit_link(False, reason)
 
-    def _perform_query(self) -> None:
+    def _perform_query(self, requested: bool = False) -> None:
         device = self._device
         if device is None:
             return
@@ -323,8 +326,14 @@ class DeviceWorker:
                 self._pending_confirm = None
                 self._pending_sleep_confirm = None
                 self._emit_write(False, "Mouse did not answer the confirmation query")
-            if self._query_misses >= 8 and not os.path.exists(device.path):
-                self._disconnect("device disappeared")
+            # A user-requested refresh should fail fast.  For the background
+            # poll, allow one transient miss but do not keep a stale battery
+            # reading forever after the mouse is switched off.
+            threshold = 1 if requested else 2
+            if self._query_misses >= threshold:
+                self._disconnect(
+                    "Mouse is not responding. Turn it on or move it, then press Retry."
+                )
             return
         self._query_misses = 0
         if self._pending_confirm is not None:
@@ -430,7 +439,7 @@ class DeviceWorker:
             self._perform_query()
             return
         if force or now - self._last_query >= self.refresh_seconds:
-            self._perform_query()
+            self._perform_query(requested=force)
 
     def _consume(self, frames: list[Frame]) -> None:
         with self._lock:
@@ -462,7 +471,8 @@ class DeviceWorker:
                 if self._connect():
                     backoff = 0.5
                     continue
-                self._stop.wait(backoff)
+                self._wake.wait(backoff)
+                self._wake.clear()
                 backoff = min(backoff * 1.6, 3.0)
                 continue
             try:
@@ -544,6 +554,7 @@ class DemoWorker:
 
     def stop(self, timeout: float = 2.0) -> None:
         self._stop.set()
+        self._wake.set()
 
     def submit(self, state: MouseState) -> bool:
         self._state = copy.deepcopy(state)
