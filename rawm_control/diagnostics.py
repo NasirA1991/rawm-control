@@ -23,6 +23,7 @@ REPORT_URL = "https://github.com/NasirA1991/rawm-control/issues/new?template=dev
 REDACT_KEYS = {
     "addr",
     "esb_addr",
+    "esb_address",
     "mac",
     "mac_address",
     "serial",
@@ -32,12 +33,15 @@ REDACT_KEYS = {
     "hid_uniq",
 }
 
+_IDENTITY_KEY_PARTS = ("serial", "mac", "addr", "uniq")
+
 _MAC_RE = re.compile(r"(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\Z")
 
 
 def redact(value: Any, key: str = "") -> Any:
     """Recursively replace MAC/serial-like values while keeping structure."""
-    if key.lower() in REDACT_KEYS:
+    lower = key.lower()
+    if lower in REDACT_KEYS or any(part in lower for part in _IDENTITY_KEY_PARTS):
         return f"<redacted: {len(str(value))} chars>"
     if isinstance(value, dict):
         return {k: redact(v, k) for k, v in value.items()}

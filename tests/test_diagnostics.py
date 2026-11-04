@@ -13,6 +13,7 @@ class RedactionTest(unittest.TestCase):
             "addr": "AA:BB:CC:DD:EE:FF",
             "product_id": 0x2338,
             "nested": {"esb_addr": "01:02:03:04:05:06", "serial": "abc"},
+            "esb_address": "001122334455",
             "plain_mac": "11:22:33:44:55:66",
             "keep": "ER21Pro",
         }
@@ -20,6 +21,7 @@ class RedactionTest(unittest.TestCase):
         self.assertNotIn("AA:BB", str(out))
         self.assertNotIn("01:02", str(out))
         self.assertNotIn("abc", str(out))
+        self.assertNotIn("001122334455", str(out))
         self.assertNotIn("11:22", str(out))
         self.assertEqual(out["product_id"], 0x2338)
         self.assertEqual(out["keep"], "ER21Pro")
