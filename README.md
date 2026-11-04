@@ -68,6 +68,11 @@ yay -S rawm-control         # latest tagged release
 Both are published: [rawm-control](https://aur.archlinux.org/packages/rawm-control)
 · [rawm-control-git](https://aur.archlinux.org/packages/rawm-control-git).
 
+`rawm-control-git` is a VCS package: the AUR page shows the base version
+(0.1.2), while the installed version is built from `pkgver()` as
+`0.1.2.rN.gHASH`. It tracks `main`, so `paru -Syu` rebuilds it with the latest
+code even when the AUR PKGBUILD itself has not changed.
+
 The AUR packages install the udev rule, desktop entry and tray integration.
 
 ### Flatpak

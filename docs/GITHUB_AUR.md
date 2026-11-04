@@ -18,6 +18,10 @@ initial `PKGBUILD`/`.SRCINFO`/`LICENSE` (no web form needed). `AUR_ENABLED=true`
 is set, the AUR SSH key is stored as a secret, and `aur-git.yml` has been run
 successfully with maintainer `nasir91`.
 
+The `rawm-control-git` AUR page shows its static base version (`pkgver=`).
+The version pacman actually installs is produced by `pkgver()` as
+`0.1.2.rN.gHASH`, so code updates are picked up by rebuilding the VCS package.
+
 ---
 
 ## 1. Create the GitHub repository (one time)
