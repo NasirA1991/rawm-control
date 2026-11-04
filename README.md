@@ -1,5 +1,9 @@
 # RAWM Control
 
+<p align="center">
+  <img src="data/icons/rawm-control-256.png" width="128" alt="RAWM Control icon">
+</p>
+
 [![CI](https://github.com/NasirA1991/rawm-control/actions/workflows/ci.yml/badge.svg)](https://github.com/NasirA1991/rawm-control/actions/workflows/ci.yml)
 [![Release](https://github.com/NasirA1991/rawm-control/actions/workflows/release.yml/badge.svg)](https://github.com/NasirA1991/rawm-control/actions/workflows/release.yml)
 [![AUR](https://img.shields.io/aur/version/rawm-control?label=AUR)](https://aur.archlinux.org/packages/rawm-control)
@@ -26,14 +30,23 @@ the **RAWM HS Receiver** (`1915:232b`).
 > **Development disclosure:** RAWM Control was built with AI assistance. It is
 > an independent project and is not affiliated with RAWM or MiraclTek.
 
-**Jump to:** [Features](#features) · [Install](#install) · [Permissions](#permissions)
-· [Usage](#usage) · [Supported devices](#supported-devices)
-· [Limitations](#limitations) · [Troubleshooting](#troubleshooting)
-· [Contributing](#contributing)
+## Quick install
 
-**Quick install:** Arch/CachyOS users can run `paru -S rawm-control-git`.
-Everyone else can grab the latest **Flatpak** or **AppImage** from the
-[releases page](https://github.com/NasirA1991/rawm-control/releases/latest).
+**Arch, CachyOS or EndeavourOS:** use `paru`, `yay`, or any other AUR helper.
+
+```bash
+paru -S rawm-control       # stable release; yay -S rawm-control works too
+paru -S rawm-control-git   # latest main
+```
+
+**Other distributions:** download the latest AppImage or Flatpak from the
+[releases page](https://github.com/NasirA1991/rawm-control/releases/latest), or
+see [Installation](#installation) for dependencies and source builds.
+
+**On this page:** [Features](#features) · [Installation](#installation)
+· [Permissions](#permissions) · [Usage](#usage)
+· [Supported devices](#supported-devices) · [Limitations](#limitations)
+· [Troubleshooting](#troubleshooting) · [Contributing](#contributing)
 
 ## Features
 
@@ -55,7 +68,7 @@ Everyone else can grab the latest **Flatpak** or **AppImage** from the
 ![Performance](docs/screenshots/performance.png)
 ![DPI](docs/screenshots/dpi.png)
 
-## Install
+## Installation
 
 | Format | Best for | Includes |
 |---|---|---|
@@ -66,14 +79,16 @@ Everyone else can grab the latest **Flatpak** or **AppImage** from the
 
 ### Arch / CachyOS (AUR)
 
+Any AUR helper works. For example:
+
 ```bash
-paru -S rawm-control-git   # latest main
 paru -S rawm-control       # latest tagged release
-# yay works too
+paru -S rawm-control-git   # latest main
+# yay -S rawm-control / rawm-control-git
 ```
 
 The packages install the udev rule, desktop entry and tray integration.
-`rawm-control-git` tracks `main`; `paru -Syu` rebuilds it.
+`rawm-control-git` tracks `main`; `paru -Syu` / `yay -Syu` rebuilds it.
 
 ### Flatpak
 
