@@ -200,6 +200,13 @@ rawmctl status --json --include-identifiers  # local debugging only
 Setters re-query the mouse and exit non-zero if the device did not confirm the
 change, so they are safe to use in scripts.
 
+### Tray clicks
+
+Left-click the tray icon to open the window; right-click opens the context
+menu. Some hosts (notably GNOME AppIndicator extensions) map primary click to
+the menu regardless of the SNI `ItemIsMenu` hint; use the host's own tray
+settings if you prefer the other behaviour.
+
 ### Tray on GNOME
 
 GNOME needs an AppIndicator/StatusNotifier extension (for example

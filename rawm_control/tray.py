@@ -391,7 +391,10 @@ class Tray(dbus.service.Object):
                 ),
                 signature="sa(iiay)ss",
             ),
-            "ItemIsMenu": dbus.Boolean(True),
+            # Conventional tray behaviour: primary click opens the window;
+            # secondary click uses the host's menu for the Menu property.
+            # Setting this true makes hosts show the menu on primary click.
+            "ItemIsMenu": dbus.Boolean(False),
             "Menu": dbus.ObjectPath("/MenuBar"),
         }
 
