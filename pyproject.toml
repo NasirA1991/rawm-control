@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rawm-control"
-version = "0.1.4"
+version = "0.1.5"
 description = "Native Linux configuration for RAWM gaming mice (reverse-engineered vendor HID protocol)"
 readme = "README.md"
 requires-python = ">=3.10"
