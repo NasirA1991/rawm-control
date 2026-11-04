@@ -23,13 +23,14 @@ s, n = re.subn(r'^version = "[^"]+"', f'version = "{version}"', s, flags=re.M)
 assert n == 1, "project version not found"
 p.write_text(s)
 
-# The -git package derives pkgver() from the checkout; do not bump its
-# static pkgver (AUR VCS guidelines discourage meaningless version commits).
-p = Path("PKGBUILD")
-s = p.read_text()
-s, n = re.subn(r'^pkgver=.*$', f'pkgver={version}', s, flags=re.M)
-assert n == 1, "pkgver not found in PKGBUILD"
-p.write_text(s)
+# Sync the static base version shown on the AUR page.  The -git package's real
+# installed version still comes from pkgver() (base.rN.gHASH).
+for pkgbuild in ("PKGBUILD", "packaging/aur/rawm-control-git/PKGBUILD.in"):
+    p = Path(pkgbuild)
+    s = p.read_text()
+    s, n = re.subn(r'^pkgver=.*$', f'pkgver={version}', s, flags=re.M)
+    assert n == 1, f"pkgver not found in {pkgbuild}"
+    p.write_text(s)
 
 p = Path("data/io.github.rawmcontrol.RawmControl.metainfo.xml")
 s = p.read_text()
