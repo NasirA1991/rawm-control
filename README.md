@@ -85,7 +85,7 @@ Download `rawm-control-<version>-x86_64.flatpak` from the
 [Releases page](https://github.com/NasirA1991/rawm-control/releases):
 
 ```bash
-flatpak install --user ./rawm-control-0.1.6-x86_64.flatpak
+flatpak install --user ./rawm-control-0.1.7-x86_64.flatpak
 flatpak run io.github.rawmcontrol.RawmControl
 ```
 
@@ -105,8 +105,8 @@ Flathub.
 Download `rawm-control-<version>-x86_64.AppImage`, then:
 
 ```bash
-chmod +x rawm-control-0.1.6-x86_64.AppImage
-./rawm-control-0.1.6-x86_64.AppImage
+chmod +x rawm-control-0.1.7-x86_64.AppImage
+./rawm-control-0.1.7-x86_64.AppImage
 ```
 
 The AppImage intentionally bundles only the application. It uses the host's
