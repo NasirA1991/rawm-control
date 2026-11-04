@@ -9,12 +9,16 @@ import json
 import struct
 import unittest
 
+from unittest.mock import patch
+
 from rawm_control import devices, protocol
 from rawm_control.protocol import (
+    RawmDevice,
     CMD_QUERY,
     CONFIG_TYPE_MOUSE_PARAM,
     FrameStream,
     MouseState,
+    ProtocolError,
     encode_event,
     encode_mouse_param,
     encode_mouse_param_frame,
@@ -206,6 +210,30 @@ class StateTests(unittest.TestCase):
     def test_unknown_product_falls_back(self):
         caps = devices.for_product(0x9999)
         self.assertIn(1000, caps.polling_rates)
+        self.assertFalse(caps.mouse)
+
+    def test_partial_hid_writes_are_completed(self):
+        dev = RawmDevice("/dev/null")
+        dev.fd = 99
+        written = []
+
+        def short_write(_fd, view):
+            chunk = bytes(view[:7])
+            written.append(chunk)
+            return len(chunk)
+
+        with patch("rawm_control.protocol.os.write", side_effect=short_write):
+            dev.write_frame(b"\x00" * 80)
+
+        # 80 bytes + report headers become two 64-byte reports.
+        self.assertEqual(sum(len(x) for x in written), 128)
+        self.assertGreater(len(written), 2)
+
+    def test_malformed_query_replies_are_protocol_errors(self):
+        for doc in ([], {"cpi_l": ["bad"]}, {"kd": ["bad"]}, {"gm": []}, {"cpi_l": "bad"}):
+            with self.subTest(doc=doc):
+                with self.assertRaises(ProtocolError):
+                    state_from_query(doc)
 
 
 if __name__ == "__main__":

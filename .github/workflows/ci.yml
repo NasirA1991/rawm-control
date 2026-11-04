@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -13,8 +16,24 @@ jobs:
       - name: Install test dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y python3-dbus python3-cairo
+          sudo apt-get install -y \
+            python3-dbus python3-cairo python3-gi \
+            gir1.2-gtk-4.0 gir1.2-adw-1 libgtk-4-1 libadwaita-1-0 \
+            xvfb dbus-x11 desktop-file-utils appstream
       - name: Unit tests
         run: python3 -m unittest discover -s tests -v
       - name: Byte-compile
         run: python3 -m compileall -q rawm_control
+      - name: Validate desktop and AppStream metadata
+        run: |
+          desktop-file-validate data/io.github.rawmcontrol.RawmControl.desktop
+          appstreamcli validate data/io.github.rawmcontrol.RawmControl.metainfo.xml
+      - name: Headless UI smoke test
+        run: |
+          set +e
+          timeout 8 dbus-run-session -- xvfb-run -a python3 -m rawm_control --demo --no-tray >/tmp/ui.log 2>&1
+          status=$?
+          cat /tmp/ui.log
+          if [ "$status" -ne 0 ] && [ "$status" -ne 124 ]; then
+            exit "$status"
+          fi

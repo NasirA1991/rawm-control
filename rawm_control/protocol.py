@@ -22,6 +22,7 @@ encoder functions are pure, while :class:`RawmDevice` owns a hidraw fd.
 
 from __future__ import annotations
 
+import copy
 import json
 import os
 import select
@@ -299,16 +300,25 @@ class MouseState:
 
 
 def state_from_query(doc: dict, base: MouseState | None = None) -> MouseState:
-    """Build a MouseState from the JSON document returned by CMD_QUERY."""
-    st = base or MouseState()
-    g = doc.get
+    """Build a MouseState from the JSON document returned by CMD_QUERY.
+
+    Every malformed or unexpected reply becomes a ProtocolError.  A partial
+    dictionary must never be allowed to escape into a full configuration
+    write, and a firmware quirk must not kill the worker thread.
+    """
+    if not isinstance(doc, dict):
+        raise ProtocolError("query reply is not a JSON object")
+    # Parse into a copy so a malformed reply cannot partially mutate the
+    # previous known-good state (which is used as the write baseline).
+    st = copy.deepcopy(base) if base is not None else MouseState()
 
     def put(attr: str, key: str, transform=lambda v: v) -> None:
-        if key in doc and doc[key] is not None:
-            try:
-                setattr(st, attr, transform(doc[key]))
-            except (TypeError, ValueError):
-                pass
+        if key not in doc or doc[key] is None:
+            return
+        try:
+            setattr(st, attr, transform(doc[key]))
+        except (TypeError, ValueError, IndexError, OverflowError) as exc:
+            raise ProtocolError(f"invalid '{key}' in query reply") from exc
 
     put("device_name", "dn", str)
     put("product_id", "pi", int)
@@ -344,18 +354,29 @@ def state_from_query(doc: dict, base: MouseState | None = None) -> MouseState:
     put("glass_mode_enabled", "gm", lambda v: int(v[1]) if isinstance(v, list) else 1)
     put("hop_channel", "hc", lambda v: int(v) != 0xFF)
 
-    cpi_levels = g("cpi_l")
-    if isinstance(cpi_levels, list):
-        st.cpi_levels = [int(x) for x in cpi_levels][:8] + [0] * max(0, 8 - len(cpi_levels))
-    colors = g("cpi_l_c")
-    if isinstance(colors, list):
-        st.cpi_level_colors = [int(x) & LED_RGB_MASK for x in colors][:8] + [0] * max(0, 8 - len(colors))
-    delays = g("kd")
-    if isinstance(delays, list):
-        st.key_delay = [int(x) for x in delays]
-    onboard = g("ocs")
-    if isinstance(onboard, list):
-        st.onboard_status = [int(x) for x in onboard]
+    def int_list(key: str, limit: int) -> list[int] | None:
+        if key not in doc or doc[key] is None:
+            return None
+        value = doc[key]
+        if not isinstance(value, list):
+            raise ProtocolError(f"invalid '{key}' in query reply: expected a list")
+        try:
+            return [int(x) for x in value[:limit]]
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ProtocolError(f"invalid '{key}' in query reply") from exc
+
+    cpi_levels = int_list("cpi_l", 8)
+    if cpi_levels is not None:
+        st.cpi_levels = cpi_levels + [0] * max(0, 8 - len(cpi_levels))
+    colors = int_list("cpi_l_c", 8)
+    if colors is not None:
+        st.cpi_level_colors = [x & LED_RGB_MASK for x in colors] + [0] * max(0, 8 - len(colors))
+    delays = int_list("kd", 32)
+    if delays is not None:
+        st.key_delay = delays
+    onboard = int_list("ocs", 32)
+    if onboard is not None:
+        st.onboard_status = onboard
     return st
 
 
@@ -594,7 +615,12 @@ class RawmDevice:
             report = header + bytes([PACKET_TYPE_EVENT_DATA | len(chunk)]) + chunk
             report += b"\x00" * (REPORT_SIZE - len(report))
             try:
-                os.write(self.fd, report)
+                view = memoryview(report)
+                while view:
+                    count = os.write(self.fd, view)
+                    if count <= 0:
+                        raise ProtocolError("short HID write")
+                    view = view[count:]
             except OSError as exc:
                 raise ProtocolError(f"write failed: {exc}") from exc
             if self.debug:

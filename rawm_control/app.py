@@ -58,9 +58,13 @@ class RawmApplication(Adw.Application):
         if self.demo:
             from .worker import DemoWorker
 
-            self.worker = DemoWorker(self._state_from_thread, self._link_from_thread)
+            self.worker = DemoWorker(
+                self._state_from_thread, self._link_from_thread, on_write=self._write_from_thread
+            )
         else:
-            self.worker = DeviceWorker(self._state_from_thread, self._link_from_thread)
+            self.worker = DeviceWorker(
+                self._state_from_thread, self._link_from_thread, on_write=self._write_from_thread
+            )
         self.worker.start()
 
         if not self.use_tray:
@@ -172,6 +176,14 @@ class RawmApplication(Adw.Application):
 
     def _link_from_thread(self, connected: bool, error: str | None) -> None:
         GLib.idle_add(self._apply_link, connected, error)
+
+    def _write_from_thread(self, ok: bool, message: str) -> None:
+        GLib.idle_add(self._apply_write_result, ok, message)
+
+    def _apply_write_result(self, ok: bool, message: str) -> bool:
+        if self.window is not None:
+            self.window.on_write_result(ok, message)
+        return False
 
     def _apply_state(self, state, changed) -> bool:
         if self.window is not None:
@@ -290,7 +302,11 @@ class RawmApplication(Adw.Application):
 
     def _toggle_autostart(self, action, _param) -> None:
         enabled = not action.get_state().get_boolean()
-        config.set_autostart(enabled)
+        if not config.set_autostart(enabled):
+            note = Gio.Notification.new("Autostart could not be updated")
+            note.set_body("Check write access to the XDG autostart directory.")
+            self.send_notification("autostart-error", note)
+            return
         action.set_state(GLib.Variant.new_boolean(enabled))
 
 

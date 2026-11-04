@@ -10,6 +10,7 @@ import json
 import os
 import platform
 import re
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -33,7 +34,8 @@ REDACT_KEYS = {
     "hid_uniq",
 }
 
-_IDENTITY_KEY_PARTS = ("serial", "mac", "addr", "uniq")
+_IDENTITY_KEY_PARTS = ("serial", "mac", "addr", "uniq", "device_id", "uuid")
+_HEX_ID_RE = re.compile(r"(?:0x)?[0-9a-fA-F]{12,64}\Z")
 
 _MAC_RE = re.compile(r"(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\Z")
 
@@ -49,8 +51,10 @@ def redact(value: Any, key: str = "") -> Any:
         return [redact(v, key) for v in value]
     if isinstance(value, tuple):
         return [redact(v, key) for v in value]
-    if isinstance(value, str) and _MAC_RE.fullmatch(value.strip()):
-        return "<redacted: MAC address>"
+    if isinstance(value, str):
+        text = value.strip()
+        if _MAC_RE.fullmatch(text) or _HEX_ID_RE.fullmatch(text):
+            return "<redacted: device identifier>"
     return value
 
 
@@ -285,5 +289,17 @@ def build_report() -> str:
 def write_report(path: str | Path | None = None) -> Path:
     target = Path(path) if path else Path.cwd() / default_filename()
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(build_report(), encoding="utf-8")
+    text = build_report()
+    # Do not leave a world-readable protocol dump behind; write atomically.
+    fd, tmp_name = tempfile.mkstemp(prefix=f".{target.name}.", dir=target.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        os.chmod(tmp_name, 0o600)
+        os.replace(tmp_name, target)
+    finally:
+        try:
+            os.unlink(tmp_name)
+        except FileNotFoundError:
+            pass
     return target

@@ -29,6 +29,8 @@ def _open() -> tuple[RawmDevice, MouseState]:
     receiver_seen = False
     for info in candidates:
         caps = devices.for_product(info.product_id)
+        if not (caps.mouse or caps.receiver):
+            continue
         dev = RawmDevice(info.path)
         dev.open()
         try:
@@ -40,6 +42,12 @@ def _open() -> tuple[RawmDevice, MouseState]:
         except protocol.ProtocolError:
             state = None
         if state is not None and not devices.for_product(state.product_id).receiver:
+            if not devices.for_product(state.product_id).mouse:
+                dev.close()
+                raise protocol.ProtocolError(
+                    "The connected RAWM device is not a supported mouse; "
+                    "configuration is read-only. Use `rawmctl report` to submit its data."
+                )
             if caps.receiver:
                 state.via_receiver = True
                 state.receiver_product_id = info.product_id
@@ -84,12 +92,16 @@ def _print_status(state: MouseState) -> None:
         print(f"  surface       {round(state.surface_quality * 100 / 255)}%")
 
 
-def _raw_json(state: MouseState) -> dict:
+def _raw_json(state: MouseState, include_identifiers: bool = False) -> dict:
     data = {}
     for key, value in vars(state).items():
         data[key] = value
     data["max_polling_rate"] = devices.max_polling_rate(state)
     data["effective_polling_rates"] = devices.effective_polling_rates(state)
+    if not include_identifiers:
+        from . import diagnostics
+
+        data = diagnostics.redact(data)
     return data
 
 
@@ -107,6 +119,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     status = sub.add_parser("status", help="show battery, polling rate and sensor settings")
     status.add_argument("--json", action="store_true", help="emit machine-readable JSON")
+    status.add_argument(
+        "--include-identifiers",
+        action="store_true",
+        help="include MAC/ESB identifiers in JSON (local debugging only)",
+    )
 
     sub.add_parser("scan", help="list supported RAWM HID devices")
     sub.add_parser("caps", help="show capabilities of the connected model")
@@ -195,7 +212,11 @@ def run(argv: list[str]) -> int:
         try:
             if command == "status":
                 if getattr(args, "json", False):
-                    print(json.dumps(_raw_json(state), indent=2, default=str))
+                    print(json.dumps(
+                        _raw_json(state, args.include_identifiers),
+                        indent=2,
+                        default=str,
+                    ))
                 else:
                     _print_status(state)
                 return 0

@@ -95,7 +95,12 @@ class BatteryGauge(Gtk.Overlay):
         radius = min(width, height) / 2 - 9
         cr.set_line_width(10)
         cr.set_line_cap(cairo.LINE_CAP_ROUND)
-        cr.set_source_rgba(1, 1, 1, 0.10)
+        try:
+            fg = self.get_style_context().get_color()
+            base = (fg.red, fg.green, fg.blue)
+        except (AttributeError, TypeError):
+            base = (1, 1, 1)
+        cr.set_source_rgba(*base, 0.10)
         cr.arc(cx, cy, radius, 0, 2 * math.pi)
         cr.stroke()
 
@@ -115,7 +120,7 @@ class BatteryGauge(Gtk.Overlay):
             cr.arc(cx, cy, radius, start, start + max(sweep, 0.001))
             cr.stroke()
         else:
-            cr.set_source_rgba(1, 1, 1, 0.15)
+            cr.set_source_rgba(*base, 0.15)
             cr.set_line_width(2)
             cr.arc(cx, cy, radius, 0, 2 * math.pi)
             cr.stroke()
@@ -162,6 +167,8 @@ class MainWindow(Adw.ApplicationWindow):
         root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
 
         self.banner = Adw.Banner(title="Mouse not connected")
+        self.banner.set_button_label("Retry")
+        self.banner.connect("button-clicked", lambda *_: self.worker.refresh())
         self.banner.set_revealed(False)
         root.append(self.banner)
 
@@ -189,7 +196,10 @@ class MainWindow(Adw.ApplicationWindow):
 
         switcher = Adw.ViewSwitcher()
         switcher.set_stack(self.stack)
-        switcher.set_policy(Adw.ViewSwitcherPolicy.WIDE)
+        try:
+            switcher.set_policy(Adw.ViewSwitcherPolicy.AUTO)
+        except (AttributeError, TypeError):
+            switcher.set_policy(Adw.ViewSwitcherPolicy.WIDE)
 
         header = Adw.HeaderBar()
         header.set_title_widget(switcher)
@@ -266,6 +276,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         self.group_about = Adw.PreferencesGroup(title="Device")
         self.row_model = Adw.ActionRow(title="Model")
+        self.row_trust = Adw.ActionRow(title="Support status")
         self.row_firmware = Adw.ActionRow(title="Firmware")
         self.row_sensor = Adw.ActionRow(title="Sensor")
         self.row_connection = Adw.ActionRow(title="Connection")
@@ -275,8 +286,16 @@ class MainWindow(Adw.ApplicationWindow):
         self.row_signal = Adw.ActionRow(title="Signal")
         self.row_onboard = Adw.ActionRow(title="Onboard profiles")
         self.row_esb = Adw.ActionRow(title="Receiver address")
+        self._esb_value = ""
+        self._esb_revealed = False
+        self.reveal_esb = Gtk.ToggleButton(label="Show")
+        self.reveal_esb.set_valign(Gtk.Align.CENTER)
+        self.reveal_esb.add_css_class("flat")
+        self.reveal_esb.connect("toggled", self._on_reveal_esb)
+        self.row_esb.add_suffix(self.reveal_esb)
         for row in (
             self.row_model,
+            self.row_trust,
             self.row_firmware,
             self.row_sensor,
             self.row_connection,
@@ -571,6 +590,7 @@ class MainWindow(Adw.ApplicationWindow):
             self.badge_sensor.set_text("charging" if state.charging else "on battery")
 
             self.row_model.set_subtitle(caps.display_name)
+            self.row_trust.set_subtitle(devices.support_status(caps))
             self.row_firmware.set_subtitle(state.firmware or "unknown")
             self.row_sensor.set_subtitle(state.sensor or caps.sensor or "unknown")
             link = "USB wired" if state.wired else "2.4 GHz wireless"
@@ -589,8 +609,11 @@ class MainWindow(Adw.ApplicationWindow):
             self.row_onboard.set_subtitle(
                 f"{state.onboard_count} profiles · active {state.onboard + 1}"
             )
-            self.row_esb.set_subtitle(state.esb_address or "—")
-            self.row_esb.set_visible(bool(state.esb_address))
+            self._esb_value = state.esb_address or ""
+            self.row_esb.set_subtitle(
+                self._esb_value if self._esb_revealed and self._esb_value else ("••••••••" if self._esb_value else "—")
+            )
+            self.row_esb.set_visible(bool(self._esb_value))
 
             self._update_polling_combo(state, caps)
             self._update_performance(state, caps)
@@ -639,7 +662,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.row_glass.set_active(bool(state.glass_mode_enabled))
         self.row_glass.set_visible(bool(caps.glass_mode))
         self.angle_scale.set_value(float(state.angle_tuning))
-        self.row_angle.set_visible(True)
+        self.row_angle.set_visible(bool(caps.angle_tuning))
 
         lods = caps.lod_names or ["LOW", "MEDIUM", "HIGH"]
         self.row_lod_combo.set_model(Gtk.StringList.new([name.title() for name in lods]))
@@ -714,6 +737,18 @@ class MainWindow(Adw.ApplicationWindow):
         self.row_light_color.set_selected(color_index)
         self.row_light_color.set_sensitive(mode == 1)
         self.row_auto_off.set_active(bool(light & LED_AUTO_OFF))
+        try:
+            page = self.stack.get_page(self.stack.get_child_by_name("lighting"))
+            page.set_visible(bool(devices.for_state(state).light))
+        except (AttributeError, TypeError):
+            pass
+
+    def _on_reveal_esb(self, button) -> None:
+        self._esb_revealed = button.get_active()
+        button.set_label("Hide" if self._esb_revealed else "Show")
+        self.row_esb.set_subtitle(
+            self._esb_value if self._esb_revealed and self._esb_value else ("••••••••" if self._esb_value else "—")
+        )
 
     # ------------------------------------------------------------ handlers
     def _current_caps(self):
@@ -731,7 +766,14 @@ class MainWindow(Adw.ApplicationWindow):
     def _write(self, state: MouseState, toast: str | None = None) -> None:
         self.worker.submit(state)
         if toast:
-            self.toast_overlay.add_toast(Adw.Toast.new(toast))
+            saving = Adw.Toast.new("Saving…")
+            saving.set_timeout(2)
+            self.toast_overlay.add_toast(saving)
+
+    def on_write_result(self, ok: bool, message: str) -> None:
+        self.toast_overlay.add_toast(Adw.Toast.new(message))
+        if not ok:
+            self.worker.refresh()
 
     def _on_polling_selected(self, row, _pspec) -> None:
         if self._loading or not self._state:
@@ -858,7 +900,9 @@ class MainWindow(Adw.ApplicationWindow):
         if abs(seconds - self._state.sleep_time) >= 30:
             self._state.sleep_time = seconds
             self.worker.submit_sleep_time(seconds)
-            self.toast_overlay.add_toast(Adw.Toast.new(f"Sleep timer: {minutes} min"))
+            saving = Adw.Toast.new("Saving…")
+            saving.set_timeout(2)
+            self.toast_overlay.add_toast(saving)
 
     def _on_cpi_changed(self, row, _pspec) -> None:
         if self._loading or not self._state:

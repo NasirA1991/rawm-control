@@ -102,7 +102,10 @@ def for_product(product_id: int) -> Capabilities:
         product_id=product_id,
         name=f"RAWM {product_id:04X}",
         display_name=f"RAWM {product_id:04X}",
-        mouse=True,
+        # An unknown vendor HID device is diagnostics-only.  It may be a
+        # keyboard, a new mouse with an unknown write layout, or something
+        # else entirely; never send a mouse parameter block to it.
+        mouse=False,
         power_modes=["Office", "LP", "HP", "Gaming+"],
         lod_names=["LOW", "MEDIUM", "HIGH"],
     )
@@ -110,6 +113,14 @@ def for_product(product_id: int) -> Capabilities:
 
 def for_state(state: MouseState) -> Capabilities:
     return for_product(state.product_id)
+
+
+def support_status(caps: Capabilities) -> str:
+    if not caps.mouse:
+        return "Read-only — not a supported mouse"
+    if caps.product_id == 0x2338:
+        return "Verified on ER21Pro hardware"
+    return "Capability profile only — hardware unverified"
 
 
 def all_capabilities() -> list[Capabilities]:
@@ -167,3 +178,64 @@ def effective_polling_rates(state) -> list[int]:
         allowed.append(current)
         allowed.sort()
     return allowed
+
+
+# Fields serialized by encode_mouse_param().  Sleep time is handled separately.
+WRITE_FIELDS = (
+    "cpi",
+    "cpi_levels",
+    "cpi_level_colors",
+    "polling_rate",
+    "light",
+    "onboard",
+    "power_mode",
+    "lod",
+    "key_delay",
+    "motion_sync",
+    "angle_tuning",
+    "angle_snapping",
+    "ripple_control",
+    "tx_output_power",
+    "auto_tx_power",
+    "battery_levels",
+    "onboard_status",
+    "glass_mode_enabled",
+)
+
+
+def validate_patch(state: MouseState, patch: dict) -> str | None:
+    """Return an error string if a patch is not safe for this capability."""
+    caps = for_state(state)
+    if not caps.mouse or caps.keyboard or caps.receiver:
+        return "this device is not a supported writable mouse"
+    for key, value in patch.items():
+        if key not in WRITE_FIELDS:
+            return f"unknown field '{key}'"
+        if key == "angle_tuning" and not caps.angle_tuning:
+            return "angle tuning is not supported by this model"
+        if key == "glass_mode_enabled" and not caps.glass_mode:
+            return "glass mode is not supported by this model"
+        if key == "light" and not caps.light:
+            return "lighting is not supported by this model"
+        if key == "polling_rate":
+            try:
+                hz = int(value)
+            except (TypeError, ValueError):
+                return "invalid polling rate"
+            if hz < 50 or hz > max_polling_rate(state):
+                return f"polling rate {hz} Hz is not available on this link"
+        if key == "cpi":
+            try:
+                cpi = int(value)
+            except (TypeError, ValueError):
+                return "invalid CPI"
+            if not caps.cpi_range[0] <= cpi <= caps.cpi_range[1]:
+                return f"CPI {cpi} is outside this model's range"
+        if key == "power_mode" and caps.power_modes:
+            try:
+                mode = int(value)
+            except (TypeError, ValueError):
+                return "invalid power mode"
+            if not 0 <= mode < len(caps.power_modes):
+                return "invalid power mode"
+    return None

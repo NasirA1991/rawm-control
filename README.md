@@ -93,6 +93,10 @@ The Flatpak is fully self-contained and exposes `/dev/hidraw*` via
 `--device=all`. If the mouse is not detected, make sure the host grants access
 to the vendor HID collection (see [Permissions](#permissions)).
 
+> **Sandbox note:** `--device=all` is required for Flatpak's hidraw access and
+> grants the sandbox more device access than just this mouse. Native packages
+> (AUR/source) are the narrower option if that matters to you.
+
 The Flatpak is distributed self-hosted on GitHub Releases; it is not on
 Flathub.
 
@@ -145,8 +149,9 @@ makepkg -si
 ## Permissions
 
 The vendor HID collection is `/dev/hidrawN`, usually `root:root` with a udev
-`uaccess` ACL. For system installs the packaged rule is installed
-automatically:
+`uaccess` ACL. The packaged rule is vendor-wide (`1915`), while the application
+itself only opens known mouse products and rejects keyboards/unknown devices.
+For system installs the rule is installed automatically:
 
 ```
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1915", TAG+="uaccess", MODE="0660"
@@ -188,7 +193,8 @@ rawmctl sleep 5
 rawmctl scan
 rawmctl caps
 rawmctl report                 # read-only report for a GitHub issue
-rawmctl status --json
+rawmctl status --json          # identifiers redacted by default
+rawmctl status --json --include-identifiers  # local debugging only
 ```
 
 Setters re-query the mouse and exit non-zero if the device did not confirm the
@@ -253,8 +259,15 @@ header, queries the mouse through the dongle, and writes settings back the same
 way. Verified with an HS Receiver + ER21Pro. If the mouse is asleep the app
 shows a retry banner instead of inventing values.
 
-Unknown PIDs get a generic UI with conservative defaults. `rawmctl scan` lists
-receivers and their paired mouse.
+Unknown PIDs are treated as read-only diagnostics: the app will not open a
+writable mouse session for them. Keyboards and other non-mouse RAWM products are
+filtered out for the same reason. `rawmctl scan` lists receivers and their paired
+mouse without writing anything.
+
+Configuration writes are applied as **changed fields only**, rebased on a fresh
+mouse query immediately before sending, and read back before the UI reports
+success. Only known mouse PIDs are writable; unsupported controls are rejected
+at the worker layer as well as hidden in the UI.
 
 ## Troubleshooting
 

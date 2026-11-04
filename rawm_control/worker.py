@@ -22,6 +22,7 @@ from .protocol import (
 
 StateCallback = Callable[[MouseState, set[str]], None]
 LinkCallback = Callable[[bool, str | None], None]
+WriteCallback = Callable[[bool, str], None]
 
 
 class DeviceWorker:
@@ -35,15 +36,19 @@ class DeviceWorker:
         on_state: StateCallback,
         on_link: LinkCallback,
         refresh_seconds: float = 30.0,
+        on_write: WriteCallback | None = None,
     ) -> None:
         self.on_state = on_state
         self.on_link = on_link
+        self.on_write = on_write
         self.refresh_seconds = refresh_seconds
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
         self._lock = threading.Lock()
-        self._pending_state: MouseState | None = None
+        self._pending_patch: dict | None = None
         self._pending_sleep: int | None = None
+        self._pending_confirm: dict | None = None
+        self._pending_sleep_confirm: int | None = None
         self._force_query = False
         self._read_rssi = False
         self._state = MouseState()
@@ -89,9 +94,23 @@ class DeviceWorker:
         return devices.for_state(self.state)
 
     def submit(self, state: MouseState) -> None:
-        """Queue a full parameter-block write (last write wins)."""
+        """Queue only changed fields; the worker rebases them on a fresh query.
+
+        This prevents a stale UI snapshot from overwriting settings changed by
+        a physical button, another tool, or the vendor web driver.
+        """
         with self._lock:
-            self._pending_state = copy.deepcopy(state)
+            current = self._state
+            patch = {}
+            for name in devices.WRITE_FIELDS:
+                value = getattr(state, name, None)
+                if getattr(current, name, None) != value:
+                    patch[name] = copy.deepcopy(value)
+            if not patch:
+                return
+            if self._pending_patch is None:
+                self._pending_patch = {}
+            self._pending_patch.update(patch)
 
     def submit_sleep_time(self, seconds: int) -> None:
         with self._lock:
@@ -121,9 +140,22 @@ class DeviceWorker:
         except Exception:
             pass
 
+    def _emit_write(self, ok: bool, message: str) -> None:
+        if self.on_write is None:
+            return
+        try:
+            self.on_write(ok, message)
+        except Exception:
+            pass
+
     def _pick_device(self):
         """Prefer a directly-connected mouse over a receiver dongle."""
-        candidates = discover()
+        candidates = [
+            d
+            for d in discover()
+            if devices.for_product(d.product_id).mouse
+            or devices.for_product(d.product_id).receiver
+        ]
         if not candidates:
             return None
         candidates.sort(
@@ -199,6 +231,19 @@ class DeviceWorker:
             self._emit_link(False, last_error or "mouse did not answer the query")
             return False
 
+        # The dongle's paired device must itself be a known mouse.  This
+        # prevents a keyboard or an unknown vendor device from being exposed
+        # as a writable mouse.
+        state_caps = devices.for_product(state.product_id)
+        if not state_caps.mouse:
+            device.close()
+            self._emit_link(
+                False,
+                "This RAWM device is not a supported mouse. Configuration is "
+                "read-only; use `rawmctl report` to submit its data.",
+            )
+            return False
+
         self._device = device
         self._last_error = None
         self._warned_permission = False
@@ -225,9 +270,13 @@ class DeviceWorker:
         self._via_receiver = False
         self._receiver_pid = None
         self._query_misses = 0
+        if self._pending_confirm is not None or self._pending_sleep_confirm is not None:
+            self._pending_confirm = None
+            self._pending_sleep_confirm = None
+            self._emit_write(False, "Device disconnected before confirming the change")
         with self._lock:
             self._state = MouseState()
-            self._pending_state = None
+            self._pending_patch = None
         self._emit_link(False, reason)
 
     def _perform_query(self) -> None:
@@ -243,10 +292,30 @@ class DeviceWorker:
             # A sleeping mouse simply does not answer. Keep the last known
             # state alive; only give up if reads/writes fail or the node goes.
             self._query_misses += 1
+            if self._pending_confirm is not None or self._pending_sleep_confirm is not None:
+                self._pending_confirm = None
+                self._pending_sleep_confirm = None
+                self._emit_write(False, "Mouse did not answer the confirmation query")
             if self._query_misses >= 8 and not os.path.exists(device.path):
                 self._disconnect("device disappeared")
             return
         self._query_misses = 0
+        if self._pending_confirm is not None:
+            expected = self._pending_confirm
+            self._pending_confirm = None
+            ok = all(getattr(state, name, None) == value for name, value in expected.items())
+            self._emit_write(
+                ok,
+                "Saved to mouse" if ok else "Mouse did not confirm the requested change",
+            )
+        if self._pending_sleep_confirm is not None:
+            expected_sleep = self._pending_sleep_confirm
+            self._pending_sleep_confirm = None
+            ok = abs(state.sleep_time - expected_sleep) < 30
+            self._emit_write(
+                ok,
+                "Sleep timer saved" if ok else "Mouse did not confirm the sleep timer",
+            )
         # Receiver metadata belongs to the connection, not to the JSON query
         # result.  A refresh must not downgrade an 8K receiver link to a
         # direct 2.4 GHz one.
@@ -270,35 +339,54 @@ class DeviceWorker:
             return
 
         with self._lock:
-            pending_state = self._pending_state
+            pending_patch = self._pending_patch
             pending_sleep = self._pending_sleep
             force = self._force_query
             want_rssi = self._read_rssi
-            self._pending_state = None
+            self._pending_patch = None
             self._pending_sleep = None
             self._force_query = False
             self._read_rssi = False
 
         try:
-            if pending_state is not None:
-                device.set_state(pending_state)
-                pending_state.via_receiver = self._via_receiver
-                pending_state.receiver_product_id = self._receiver_pid
+            if pending_patch is not None:
+                # Rebase the user's intent onto a fresh complete snapshot.
+                fresh, frames = device.query(timeout=1.4)
+                if fresh is None:
+                    self._emit_write(False, "Mouse did not answer; change not saved")
+                    return
+                fresh.via_receiver = self._via_receiver
+                fresh.receiver_product_id = self._receiver_pid
+                apply_notifications(fresh, frames)
+                error = devices.validate_patch(fresh, pending_patch)
+                if error:
+                    self._emit_write(False, f"Change rejected: {error}")
+                    return
+                for name, value in pending_patch.items():
+                    setattr(fresh, name, copy.deepcopy(value))
+                device.set_state(fresh)
                 with self._lock:
-                    self._state = copy.deepcopy(pending_state)
+                    self._state = copy.deepcopy(fresh)
+                self._pending_confirm = copy.deepcopy(pending_patch)
                 self._confirm_at = time.monotonic() + 0.4
+                self._emit_state(set())
             if pending_sleep is not None:
                 device.set_sleep_time(pending_sleep, crc=self.state.crc)
                 with self._lock:
                     self._state.sleep_time = pending_sleep
+                self._pending_sleep_confirm = pending_sleep
                 self._confirm_at = time.monotonic() + 0.4
             if want_rssi:
                 device.read_rssi(crc=self.state.crc)
         except ProtocolError as exc:
+            if pending_patch is not None or pending_sleep is not None:
+                self._emit_write(False, f"Write failed: {exc}")
             self._disconnect(str(exc))
             return
 
-        if not device.read_ready(0.15):
+        # Block on the fd instead of waking 50x/second.  0.5 s still gives
+        # prompt notification handling while keeping an idle tray almost free.
+        if not device.read_ready(0.5):
             pass
         else:
             try:
@@ -327,7 +415,7 @@ class DeviceWorker:
                     import json
 
                     new = state_from_query(json.loads(frame.payload.rstrip(b"\x00")), state)
-                except (ValueError, UnicodeDecodeError):
+                except (ValueError, UnicodeDecodeError, ProtocolError):
                     continue
                 state = new
                 changed.update({"all"})
@@ -350,17 +438,23 @@ class DeviceWorker:
                 self._stop.wait(backoff)
                 backoff = min(backoff * 1.6, 3.0)
                 continue
-            self._loop_connected()
-            self._stop.wait(0.02)
+            try:
+                self._loop_connected()
+            except Exception as exc:  # never let a firmware quirk kill the worker
+                self._disconnect(f"worker error: {exc}")
+                self._stop.wait(1.0)
+                continue
+            self._stop.wait(0.01)
         self._disconnect(None)
 
 
 class DemoWorker:
     """In-memory stand-in used by ``--demo`` for UI work and screenshots."""
 
-    def __init__(self, on_state: StateCallback, on_link: LinkCallback, refresh_seconds: float = 30.0) -> None:
+    def __init__(self, on_state: StateCallback, on_link: LinkCallback, refresh_seconds: float = 30.0, on_write: WriteCallback | None = None) -> None:
         self.on_state = on_state
         self.on_link = on_link
+        self.on_write = on_write
         self.refresh_seconds = refresh_seconds
         self._connected = True
         self._state = MouseState(
@@ -426,10 +520,14 @@ class DemoWorker:
     def submit(self, state: MouseState) -> None:
         self._state = copy.deepcopy(state)
         self.on_state(copy.deepcopy(self._state), set())
+        if self.on_write is not None:
+            self.on_write(True, "Saved to mouse (demo)")
 
     def submit_sleep_time(self, seconds: int) -> None:
         self._state.sleep_time = seconds
         self.on_state(copy.deepcopy(self._state), {"sleep_time"})
+        if self.on_write is not None:
+            self.on_write(True, "Sleep timer saved (demo)")
 
     def refresh(self) -> None:
         self.on_state(copy.deepcopy(self._state), set())
