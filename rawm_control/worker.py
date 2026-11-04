@@ -384,7 +384,7 @@ class DeviceWorker:
             self._disconnect(str(exc))
             return
 
-        # Block on the fd instead of waking 50x/second.  0.5 s still gives
+        # Block on the fd instead of waking every ~170 ms.  0.5 s still gives
         # prompt notification handling while keeping an idle tray almost free.
         if not device.read_ready(0.5):
             pass
