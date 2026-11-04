@@ -54,6 +54,17 @@ def save(data: dict) -> None:
         pass
 
 
+def reset() -> bool:
+    """Remove only local app preferences; leaves autostart and the mouse alone."""
+    try:
+        config_path().unlink()
+        return True
+    except FileNotFoundError:
+        return True
+    except OSError:
+        return False
+
+
 def autostart_path() -> Path:
     base = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
     return Path(base) / "autostart" / "rawm-control.desktop"

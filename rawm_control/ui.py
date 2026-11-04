@@ -315,6 +315,18 @@ class MainWindow(Adw.ApplicationWindow):
         self.row_refresh = Adw.ButtonRow(title="Refresh device state")
         self.row_refresh.connect("activated", lambda *_: self.worker.refresh())
         self.group_actions.add(self.row_refresh)
+
+        self.row_restore = Adw.ActionRow(
+            title="Restore detected settings",
+            subtitle="Revert to the values read when this mouse connected.",
+        )
+        self.row_restore.set_activatable(False)
+        self.restore_button = Gtk.Button(label="Restore")
+        self.restore_button.set_valign(Gtk.Align.CENTER)
+        self.restore_button.set_sensitive(False)
+        self.restore_button.connect("clicked", self._on_restore_clicked)
+        self.row_restore.add_suffix(self.restore_button)
+        self.group_actions.add(self.row_restore)
         page.add(self.group_actions)
 
         diagnostics = Adw.PreferencesGroup(
@@ -591,6 +603,7 @@ class MainWindow(Adw.ApplicationWindow):
 
             self.row_model.set_subtitle(caps.display_name)
             self.row_trust.set_subtitle(devices.support_status(caps))
+            self.restore_button.set_sensitive(bool(getattr(self.worker, "has_baseline", False)))
             self.row_firmware.set_subtitle(state.firmware or "unknown")
             self.row_sensor.set_subtitle(state.sensor or caps.sensor or "unknown")
             link = "USB wired" if state.wired else "2.4 GHz wireless"
@@ -629,6 +642,7 @@ class MainWindow(Adw.ApplicationWindow):
             self.banner.set_revealed(False)
             return
         self._state = None
+        self.restore_button.set_sensitive(False)
         self.stack.set_sensitive(False)
         self.gauge.set_state(None, False)
         self.hero_title.set_text("No mouse connected")
@@ -774,6 +788,36 @@ class MainWindow(Adw.ApplicationWindow):
         self.toast_overlay.add_toast(Adw.Toast.new(message))
         if not ok:
             self.worker.refresh()
+
+    def show_toast(self, message: str) -> None:
+        self.toast_overlay.add_toast(Adw.Toast.new(message))
+
+    def _on_restore_clicked(self, _button) -> None:
+        dialog = Adw.AlertDialog(
+            heading="Restore detected settings?",
+            body=(
+                "This sends the settings that were read when the mouse connected. "
+                "Changes made since then will be overwritten. It does not perform "
+                "a factory reset."
+            ),
+        )
+        dialog.add_response("cancel", "Cancel")
+        dialog.add_response("restore", "Restore")
+        dialog.set_response_appearance("restore", Adw.ResponseAppearance.SUGGESTED)
+        dialog.set_default_response("cancel")
+        dialog.set_close_response("cancel")
+        dialog.connect("response", self._on_restore_response)
+        dialog.present(self)
+
+    def _on_restore_response(self, _dialog, response: str) -> None:
+        if response != "restore":
+            return
+        if not self.worker.restore_baseline():
+            self.show_toast("No detected settings snapshot is available")
+            return
+        saving = Adw.Toast.new("Restoring detected settings…")
+        saving.set_timeout(2)
+        self.toast_overlay.add_toast(saving)
 
     def _on_polling_selected(self, row, _pspec) -> None:
         if self._loading or not self._state:

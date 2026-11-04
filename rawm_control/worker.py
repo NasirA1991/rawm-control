@@ -49,6 +49,7 @@ class DeviceWorker:
         self._pending_sleep: int | None = None
         self._pending_confirm: dict | None = None
         self._pending_sleep_confirm: int | None = None
+        self._baseline_state: MouseState | None = None
         self._force_query = False
         self._read_rssi = False
         self._state = MouseState()
@@ -93,7 +94,7 @@ class DeviceWorker:
     def capabilities(self) -> devices.Capabilities:
         return devices.for_state(self.state)
 
-    def submit(self, state: MouseState) -> None:
+    def submit(self, state: MouseState) -> bool:
         """Queue only changed fields; the worker rebases them on a fresh query.
 
         This prevents a stale UI snapshot from overwriting settings changed by
@@ -107,14 +108,38 @@ class DeviceWorker:
                 if getattr(current, name, None) != value:
                     patch[name] = copy.deepcopy(value)
             if not patch:
-                return
+                return False
             if self._pending_patch is None:
                 self._pending_patch = {}
             self._pending_patch.update(patch)
+            return True
 
     def submit_sleep_time(self, seconds: int) -> None:
         with self._lock:
             self._pending_sleep = int(seconds)
+
+    @property
+    def has_baseline(self) -> bool:
+        with self._lock:
+            return self._baseline_state is not None
+
+    def restore_baseline(self) -> bool:
+        """Restore the snapshot taken when this mouse connected.
+
+        This is a normal, verified patch write; it is not a factory reset.
+        """
+        with self._lock:
+            baseline = copy.deepcopy(self._baseline_state)
+            current = copy.deepcopy(self._state)
+        if baseline is None:
+            return False
+        queued = self.submit(baseline)
+        if baseline.sleep_time != current.sleep_time:
+            self.submit_sleep_time(baseline.sleep_time)
+            queued = True
+        if not queued:
+            self._emit_write(True, "Already at detected settings")
+        return True
 
     def refresh(self) -> None:
         with self._lock:
@@ -254,6 +279,7 @@ class DeviceWorker:
         with self._lock:
             self._state = state
         apply_notifications(state, frames)
+        self._baseline_state = copy.deepcopy(state)
         self._emit_link(True, None)
         self._emit_state(set())
         self._last_query = time.monotonic()
@@ -270,6 +296,7 @@ class DeviceWorker:
         self._via_receiver = False
         self._receiver_pid = None
         self._query_misses = 0
+        self._baseline_state = None
         if self._pending_confirm is not None or self._pending_sleep_confirm is not None:
             self._pending_confirm = None
             self._pending_sleep_confirm = None
@@ -490,6 +517,7 @@ class DemoWorker:
             esb_address="392bf4bc05f0b15df8f9fafbfcfdfeff",
             rssi=-42,
         )
+        self._baseline_state = copy.deepcopy(self._state)
         self._started = False
         self._stop = threading.Event()
 
@@ -517,11 +545,25 @@ class DemoWorker:
     def stop(self, timeout: float = 2.0) -> None:
         self._stop.set()
 
-    def submit(self, state: MouseState) -> None:
+    def submit(self, state: MouseState) -> bool:
         self._state = copy.deepcopy(state)
         self.on_state(copy.deepcopy(self._state), set())
         if self.on_write is not None:
             self.on_write(True, "Saved to mouse (demo)")
+        return True
+
+    @property
+    def has_baseline(self) -> bool:
+        return self._baseline_state is not None
+
+    def restore_baseline(self) -> bool:
+        if self._baseline_state is None:
+            return False
+        self._state = copy.deepcopy(self._baseline_state)
+        self.on_state(copy.deepcopy(self._state), set())
+        if self.on_write is not None:
+            self.on_write(True, "Restored detected settings (demo)")
+        return True
 
     def submit_sleep_time(self, seconds: int) -> None:
         self._state.sleep_time = seconds

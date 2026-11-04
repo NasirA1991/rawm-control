@@ -107,6 +107,7 @@ class RawmApplication(Adw.Application):
             ("show", lambda *_: self._show_window()),
             ("about", lambda *_: self._about()),
             ("web-driver", lambda *_: self._open_web_driver()),
+            ("reset-preferences", lambda *_: self._reset_preferences()),
         ]
         for name, callback in actions:
             action = Gio.SimpleAction.new(name, None)
@@ -274,6 +275,42 @@ class RawmApplication(Adw.Application):
     def _open_web_driver(self) -> None:
         launcher = Gtk.UriLauncher.new("https://rawmtech.com/hub.html")
         launcher.launch(self.window, None, None)
+
+    def _reset_preferences(self) -> None:
+        if self.window is None:
+            self._show_window()
+        dialog = Adw.AlertDialog(
+            heading="Reset app preferences?",
+            body=(
+                "This resets the tray icon style, notification preferences and "
+                "start-hidden setting. It does not change anything on the mouse "
+                "and does not disable autostart."
+            ),
+        )
+        dialog.add_response("cancel", "Cancel")
+        dialog.add_response("reset", "Reset")
+        dialog.set_response_appearance("reset", Adw.ResponseAppearance.DESTRUCTIVE)
+        dialog.set_default_response("cancel")
+        dialog.set_close_response("cancel")
+        dialog.connect("response", self._on_reset_preferences_response)
+        dialog.present(self.window)
+
+    def _on_reset_preferences_response(self, _dialog, response: str) -> None:
+        if response != "reset":
+            return
+        if not config.reset():
+            note = Gio.Notification.new("App preferences could not be reset")
+            note.set_body("Check write access to the configuration directory.")
+            self.send_notification("preferences-error", note)
+            return
+        style = config.DEFAULT_TRAY_STYLE
+        action = self.lookup_action("tray-style")
+        if action is not None:
+            action.set_state(GLib.Variant.new_string(style))
+        if self.tray is not None:
+            self.tray.set_style(style)
+        if self.window is not None:
+            self.window.show_toast("App preferences reset")
 
     def _initial_tray_style(self) -> str:
         settings = config.load()

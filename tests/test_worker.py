@@ -137,6 +137,21 @@ class WorkerLifecycleTest(unittest.TestCase):
         self.assertIsNotNone(devices.validate_patch(MouseState(product_id=0xDEAD), {"cpi": 1600}))
         self.assertIsNotNone(devices.validate_patch(MouseState(product_id=0x2345), {"cpi": 1600}))
 
+    def test_restore_baseline_queues_only_changed_fields(self):
+        worker, _states, _links, _writes = self.make_worker()
+        worker._state = MouseState(product_id=0x2338, cpi=3200, sleep_time=600)
+        worker._baseline_state = MouseState(product_id=0x2338, cpi=1600, sleep_time=300)
+
+        self.assertTrue(worker.has_baseline)
+        self.assertTrue(worker.restore_baseline())
+        self.assertEqual(worker._pending_patch["cpi"], 1600)
+        self.assertEqual(worker._pending_sleep, 300)
+
+    def test_restore_without_baseline_is_rejected(self):
+        worker, _states, _links, _writes = self.make_worker()
+        self.assertFalse(worker.has_baseline)
+        self.assertFalse(worker.restore_baseline())
+
     def test_malformed_query_frame_does_not_escape_consume(self):
         worker, _states, _links, _writes = self.make_worker()
         worker._state = MouseState(product_id=0x2338)

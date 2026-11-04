@@ -269,6 +269,18 @@ mouse query immediately before sending, and read back before the UI reports
 success. Only known mouse PIDs are writable; unsupported controls are rejected
 at the worker layer as well as hidden in the UI.
 
+### Safety and recovery
+
+- **Restore detected settings** (Device → Maintenance) reverts to the snapshot
+  read when the mouse connected. This is a normal verified write, not a factory
+  reset.
+- **Reset app preferences** (main menu) only resets local tray/notification
+  preferences. It never writes to the mouse and leaves autostart alone.
+- No generic “factory reset” is offered: the app does not know each model’s
+  factory parameter block, and inventing one would be unsafe.
+- Keyboards and unknown vendor HID devices are refused as configuration targets.
+  They remain usable through the read-only `rawmctl report` path.
+
 ## Troubleshooting
 
 - **"permission denied"** — install the udev rule above and replug the receiver.
