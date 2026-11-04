@@ -1,5 +1,6 @@
 # Maintainer: Nasir A. <112448715+NasirA1991@users.noreply.github.com>
 # Rendered by .github/workflows/release.yml for each v* tag.
+# The release tarball is immutable and @SHA256@ is injected from the release job.
 pkgname=rawm-control
 pkgver=@VERSION@
 pkgrel=1
