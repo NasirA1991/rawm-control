@@ -111,6 +111,13 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("scan", help="list supported RAWM HID devices")
     sub.add_parser("caps", help="show capabilities of the connected model")
 
+    report = sub.add_parser(
+        "report",
+        help="write a read-only diagnostic report for GitHub issues",
+    )
+    report.add_argument("-o", "--output", help="output file (default: rawm-control-report-<timestamp>.md)")
+    report.add_argument("--stdout", action="store_true", help="print the report instead of writing a file")
+
     polling = sub.add_parser("polling", help="get or set the polling rate in Hz")
     polling.add_argument("hz", nargs="?", type=int)
 
@@ -143,6 +150,18 @@ def run(argv: list[str]) -> int:
     command = args.command or "status"
 
     try:
+        if command == "report":
+            from . import diagnostics
+
+            if args.stdout:
+                print(diagnostics.build_report())
+                return 0
+            path = diagnostics.write_report(args.output)
+            print(f"Wrote {path}")
+            print("Review it, then attach it to a GitHub issue:")
+            print(diagnostics.REPORT_URL)
+            return 0
+
         if command == "scan":
             found = protocol.discover()
             if not found:
@@ -326,6 +345,7 @@ CLI_COMMANDS = {
     "status",
     "scan",
     "caps",
+    "report",
     "polling",
     "motion-sync",
     "angle-snapping",

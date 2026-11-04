@@ -4,7 +4,7 @@ This repository is wired up for:
 
 | Workflow | Trigger | What it does |
 |---|---|---|
-| `.github/workflows/ci.yml` | every push / PR | runs the 32 unit tests on Ubuntu |
+| `.github/workflows/ci.yml` | every push / PR | runs the 34 unit tests on Ubuntu |
 | `.github/workflows/aur-git.yml` | every push to `main` | publishes the `rawm-control-git` AUR package |
 | `.github/workflows/release.yml` | tags `v*` | builds source/AppImage/Flatpak, creates the GitHub release, publishes the stable `rawm-control` AUR package |
 

@@ -19,6 +19,13 @@ both over its own link and through the **RAWM HS Receiver** (`1915:232b`).
 
 <sub>Screenshots are rendered by the built-in demo mode (`--demo`).</sub>
 
+> **Hardware status:** only the **ER21Pro** (direct and through an HS Receiver)
+> has been verified on physical hardware. Other RAWM models use the same vendor
+> HID protocol and capability database, so they are expected to work, but are
+> not confirmed. If you have another model, please send a
+> [read-only device report](docs/DEVICE_REPORTS.md) — no data is uploaded
+> automatically.
+
 ## Features
 
 - **Tray icon with live battery** — five selectable designs: *Ring + mouse*,
@@ -185,6 +192,7 @@ rawmctl power HP
 rawmctl sleep 5
 rawmctl scan
 rawmctl caps
+rawmctl report                 # read-only report for a GitHub issue
 rawmctl status --json
 ```
 
@@ -205,7 +213,11 @@ table comes from the vendor's own device database. **Hardware verification so
 far is limited to the ER21Pro** (direct and through an HS Receiver); the other
 rows are supported by the capability database and the same protocol, but have
 not been tested on physical units. Reports with model, PID and firmware are
-very welcome.
+very welcome: open **Device → Diagnostics → Save device report** (or run
+`rawmctl report`), review the locally generated file, and attach it to the
+[device support issue](https://github.com/NasirA1991/rawm-control/issues/new?template=device-report.yml).
+Nothing is uploaded automatically, and MAC/serial fields are redacted. See
+[docs/DEVICE_REPORTS.md](docs/DEVICE_REPORTS.md).
 
 | Model | USB ID | Direct / own dongle | With 8K receiver |
 |-------|--------|--------------------:|-----------------:|

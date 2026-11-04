@@ -1,0 +1,52 @@
+name: Device support report
+description: Share a read-only report so another RAWM model can be supported
+title: "[Device] "
+labels: ["device-report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping! Please generate the report locally first:
+        **Device → Diagnostics → Save device report**, or `rawmctl report`.
+
+        It is read-only and is not uploaded automatically. Review it, then
+        attach the `.md` file below (or paste it in a details block). Do not
+        include unredacted serial numbers or MAC addresses.
+  - type: input
+    id: model
+    attributes:
+      label: Mouse model
+      description: The name on the label or in RAWM HUB.
+      placeholder: e.g. ES21Pro
+    validations:
+      required: true
+  - type: input
+    id: ids
+    attributes:
+      label: USB PID / receiver PID
+      description: From `rawmctl scan` or `lsusb -d 1915:`.
+      placeholder: e.g. mouse 1915:2352, receiver 1915:232b
+    validations:
+      required: true
+  - type: textarea
+    id: symptoms
+    attributes:
+      label: What works and what does not?
+      description: Settings, polling, buttons, battery, receiver behaviour, etc.
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: Report
+      description: Paste the report here, or attach the generated .md file after creating the issue.
+      render: markdown
+    validations:
+      required: false
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy
+      options:
+        - label: I reviewed the report and removed any sensitive data.
+          required: true

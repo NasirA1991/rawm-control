@@ -652,27 +652,38 @@ class RawmDevice:
         return b""
 
     # -- high level --------------------------------------------------------
-    def query(self, timeout: float = 1.2) -> tuple[MouseState | None, list[Frame]]:
-        """Send CMD_QUERY and gather the returned JSON + frames."""
+    def query_document(self, timeout: float = 1.2) -> tuple[dict | None, list[Frame]]:
+        """Send CMD_QUERY and return the raw JSON document plus frames.
+
+        No configuration is written; this is safe for diagnostics.
+        """
         self.stream = FrameStream()
         self.write_frame(encode_query_frame())
         frames: list[Frame] = []
         deadline = time.monotonic() + timeout
-        state: MouseState | None = None
+        doc: dict | None = None
         while time.monotonic() < deadline:
             for frame in self.drain(min(0.2, max(0.0, deadline - time.monotonic()))):
                 frames.append(frame)
-                if frame.cmd == CMD_QUERY_RESULT and state is None:
+                if frame.cmd == CMD_QUERY_RESULT and doc is None:
                     raw = frame.payload.rstrip(b"\x00")
                     try:
-                        state = state_from_query(json.loads(raw))
+                        parsed = json.loads(raw)
                     except (ValueError, UnicodeDecodeError) as exc:
                         raise ProtocolError(f"bad query reply: {exc}") from exc
-            if state is not None and time.monotonic() > deadline - timeout + 0.25:
+                    if not isinstance(parsed, dict):
+                        raise ProtocolError("bad query reply: expected a JSON object")
+                    doc = parsed
+            if doc is not None and time.monotonic() > deadline - timeout + 0.25:
                 break
         # collect anything still queued without blocking
         frames.extend(self.drain(0))
-        return state, frames
+        return doc, frames
+
+    def query(self, timeout: float = 1.2) -> tuple[MouseState | None, list[Frame]]:
+        """Send CMD_QUERY and gather the returned JSON + frames."""
+        doc, frames = self.query_document(timeout)
+        return (state_from_query(doc) if doc is not None else None), frames
 
     def set_state(self, state: MouseState) -> None:
         self.write_frame(encode_mouse_param_frame(state))

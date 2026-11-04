@@ -314,7 +314,7 @@ def main(argv: list[str] | None = None) -> int:
         return cli.run(args)
     if args and args[0] in ("-h", "--help"):
         print("Usage: rawm-control [--tray] [--cli <command>]")
-        print("       rawm-control <status|scan|caps|polling|motion-sync|dpi|lod|power|sleep> ...\n")
+        print("       rawm-control <status|scan|caps|report|polling|motion-sync|dpi|lod|power|sleep> ...\n")
         cli.build_parser().print_help()
         return 0
 

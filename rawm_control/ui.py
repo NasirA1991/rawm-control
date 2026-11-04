@@ -297,7 +297,52 @@ class MainWindow(Adw.ApplicationWindow):
         self.row_refresh.connect("activated", lambda *_: self.worker.refresh())
         self.group_actions.add(self.row_refresh)
         page.add(self.group_actions)
+
+        diagnostics = Adw.PreferencesGroup(
+            title="Diagnostics",
+            description=(
+                "Read-only report for adding support for another RAWM model. "
+                "It is saved locally; nothing is uploaded automatically."
+            ),
+        )
+        self.row_report = Adw.ActionRow(
+            title="Save device report",
+            subtitle="Review the file, then attach it to a GitHub issue.",
+        )
+        self.row_report.set_activatable(False)
+        report_button = Gtk.Button(icon_name="document-save-symbolic")
+        report_button.set_tooltip_text("Save a read-only device report")
+        report_button.set_valign(Gtk.Align.CENTER)
+        report_button.add_css_class("flat")
+        report_button.connect("clicked", self._on_save_report)
+        self.row_report.add_suffix(report_button)
+        diagnostics.add(self.row_report)
+        page.add(diagnostics)
         return page
+
+    def _on_save_report(self, *_args) -> None:
+        from . import diagnostics
+
+        dialog = Gtk.FileDialog()
+        dialog.set_title("Save RAWM Control device report")
+        dialog.set_initial_name(diagnostics.default_filename())
+        dialog.save(self, None, self._on_report_saved)
+
+    def _on_report_saved(self, dialog, result) -> None:
+        from . import diagnostics
+
+        try:
+            gfile = dialog.save_finish(result)
+        except GLib.Error:
+            return
+        if gfile is None or not gfile.get_path():
+            return
+        try:
+            path = diagnostics.write_report(gfile.get_path())
+        except Exception as exc:
+            self.toast_overlay.add_toast(Adw.Toast.new(f"Could not write report: {exc}"))
+            return
+        self.toast_overlay.add_toast(Adw.Toast.new(f"Report saved to {path.name}"))
 
     def _build_performance_page(self) -> Gtk.Widget:
         page = Adw.PreferencesPage()
