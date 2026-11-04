@@ -318,6 +318,9 @@ class Tray(dbus.service.Object):
         self.caps = devices.for_product(0)
         self.revision = 1
         self._status_text = "Not connected"
+        # Passive lets hosts that use "show when relevant" hide the item while
+        # no mouse is connected; it becomes Active as soon as one is present.
+        self.sni_status = "Passive"
         self.polling_rates = [125, 250, 500, 1000]
         self._icon = render_tray_icon(None, False, self.style)
 
@@ -356,11 +359,12 @@ class Tray(dbus.service.Object):
             self._status_text = f"{self.caps.display_name} — {battery} · {link}{charger}"
         else:
             self._status_text = message or "Click to open RAWM Control"
+        self.sni_status = "Active" if connected and state is not None else "Passive"
         self._icon = render_tray_icon(state, connected, self.style)
         self._emit("NewIcon")
         self._emit("NewToolTip")
         self._emit("NewTitle")
-        self.NewStatus("Active")
+        self.NewStatus(self.sni_status)
         self.menu.refresh()
 
     def set_category(self, category: str) -> None:
@@ -399,7 +403,7 @@ class Tray(dbus.service.Object):
             "Category": dbus.String(self.category),
             "Id": dbus.String("rawm-control"),
             "Title": dbus.String("RAWM Control"),
-            "Status": dbus.String("Active"),
+            "Status": dbus.String(self.sni_status),
             # Empty on purpose: KDE prefers IconName over IconPixmap when it is
             # set, which would hide the battery percentage drawn in the pixmap.
             "IconName": dbus.String(""),

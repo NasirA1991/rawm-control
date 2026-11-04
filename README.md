@@ -204,6 +204,10 @@ hosts work directly.
 the left; *Hardware* groups it with system hardware icons. Plasma may require a
 restart to apply a category change on some versions.
 
+When no mouse is connected, the tray item reports **Passive**, so Plasma's
+*Shown when relevant* setting hides it. It becomes **Active** again as soon as a
+mouse connects.
+
 ## Supported devices
 
 The app covers the RAWM family through the vendor capability database. **Only
