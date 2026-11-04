@@ -31,6 +31,8 @@ ID_DPI = 10
 ID_POLLING_BASE = 30
 ID_DPI_BASE = 40
 ID_STYLE_BASE = 50
+ID_CATEGORY = 12
+ID_CATEGORY_BASE = 60
 ID_MOTION = 4
 ID_SNAPPING = 5
 ID_SEP2 = 6
@@ -57,9 +59,15 @@ def _argb_pixmap(surface: cairo.ImageSurface) -> list[tuple[int, int, bytes]]:
     return [(width, height, bytes(out))]
 
 
-from .config import DEFAULT_TRAY_STYLE, TRAY_STYLES
+from .config import (
+    DEFAULT_TRAY_CATEGORY,
+    DEFAULT_TRAY_STYLE,
+    TRAY_CATEGORIES,
+    TRAY_STYLES,
+)
 
 STYLE_KEYS = [key for key, _label in TRAY_STYLES]
+CATEGORY_KEYS = [key for key, _label in TRAY_CATEGORIES]
 
 
 def _accent(state: MouseState | None, connected: bool):
@@ -288,6 +296,8 @@ class Tray(dbus.service.Object):
         on_snapping: Callable[[bool], None],
         style: str = DEFAULT_TRAY_STYLE,
         on_style_selected: Callable[[str], None] | None = None,
+        category: str = DEFAULT_TRAY_CATEGORY,
+        on_category_selected: Callable[[str], None] | None = None,
     ) -> None:
         DBusGMainLoop(set_as_default=True)
         self.bus = dbus.SessionBus()
@@ -300,7 +310,9 @@ class Tray(dbus.service.Object):
         self.on_motion_sync = on_motion_sync
         self.on_snapping = on_snapping
         self.style = style if style in STYLE_KEYS else DEFAULT_TRAY_STYLE
+        self.category = category if category in CATEGORY_KEYS else DEFAULT_TRAY_CATEGORY
         self.on_style_selected = on_style_selected
+        self.on_category_selected = on_category_selected
         self.state: MouseState | None = None
         self.connected = False
         self.caps = devices.for_product(0)
@@ -351,6 +363,25 @@ class Tray(dbus.service.Object):
         self.NewStatus("Active")
         self.menu.refresh()
 
+    def set_category(self, category: str) -> None:
+        if category not in CATEGORY_KEYS or category == self.category:
+            return
+        self.category = category
+        # SNI has no NewCategory signal.  Re-registering with the watcher makes
+        # Plasma read the new hint; if the host ignores it, the setting still
+        # persists and applies on the next launch.
+        try:
+            watcher = self.bus.get_object(WATCHER, WATCHER_PATH)
+            watcher.UnregisterStatusNotifierItem(
+                self.bus_name.get_name(), dbus_interface=WATCHER
+            )
+            watcher.RegisterStatusNotifierItem(
+                self.bus_name.get_name(), dbus_interface=WATCHER
+            )
+        except dbus.DBusException:
+            pass
+        self.menu.refresh()
+
     def set_style(self, style: str) -> None:
         if style not in STYLE_KEYS or style == self.style:
             return
@@ -365,7 +396,7 @@ class Tray(dbus.service.Object):
     # -- SNI properties ----------------------------------------------------
     def _props(self) -> dict[str, object]:
         return {
-            "Category": dbus.String("Hardware"),
+            "Category": dbus.String(self.category),
             "Id": dbus.String("rawm-control"),
             "Title": dbus.String("RAWM Control"),
             "Status": dbus.String("Active"),
@@ -540,6 +571,21 @@ class TrayMenu(dbus.service.Object):
                     for i, (key, label) in enumerate(TRAY_STYLES)
                 ],
             ),
+            self._item(
+                ID_CATEGORY,
+                {"label": "Tray category", "children-display": "submenu"},
+                [
+                    self._item(
+                        ID_CATEGORY_BASE + i,
+                        {
+                            "label": label,
+                            "toggle-type": "radio",
+                            "toggle-state": 1 if self.tray.category == key else 0,
+                        },
+                    )
+                    for i, (key, label) in enumerate(TRAY_CATEGORIES)
+                ],
+            ),
             self._item(ID_SEP2, {"type": "separator"}),
             self._item(ID_OPEN, {"label": "Open RAWM Control"}),
             self._item(ID_REFRESH, {"label": "Refresh", "enabled": connected}),
@@ -627,6 +673,10 @@ class TrayMenu(dbus.service.Object):
             style = TRAY_STYLES[item_id - ID_STYLE_BASE][0]
             if self.tray.on_style_selected is not None:
                 self.tray.on_style_selected(style)
+        elif ID_CATEGORY_BASE <= item_id < ID_CATEGORY_BASE + len(TRAY_CATEGORIES):
+            category = TRAY_CATEGORIES[item_id - ID_CATEGORY_BASE][0]
+            if self.tray.on_category_selected is not None:
+                self.tray.on_category_selected(category)
         elif item_id == ID_MOTION:
             self.tray.on_motion_sync(not bool(self.tray.state and self.tray.state.motion_sync))
         elif item_id == ID_SNAPPING:

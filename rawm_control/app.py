@@ -83,6 +83,10 @@ class RawmApplication(Adw.Application):
                 on_snapping=lambda enabled: self._on_ui(self._tray_snapping, enabled),
                 style=self._initial_tray_style(),
                 on_style_selected=lambda style: self._on_ui(self._apply_tray_style, style),
+                category=self._initial_tray_category(),
+                on_category_selected=lambda category: self._on_ui(
+                    self._apply_tray_category, category
+                ),
             )
             if tray.start():
                 self.tray = tray
@@ -121,6 +125,14 @@ class RawmApplication(Adw.Application):
         )
         style_action.connect("activate", self._on_tray_style_action)
         self.add_action(style_action)
+
+        category_action = Gio.SimpleAction.new_stateful(
+            "tray-category",
+            GLib.VariantType.new("s"),
+            GLib.Variant.new_string(self._initial_tray_category()),
+        )
+        category_action.connect("activate", self._on_tray_category_action)
+        self.add_action(category_action)
 
         autostart = Gio.SimpleAction.new_stateful(
             "autostart",
@@ -309,6 +321,12 @@ class RawmApplication(Adw.Application):
             action.set_state(GLib.Variant.new_string(style))
         if self.tray is not None:
             self.tray.set_style(style)
+        category = config.DEFAULT_TRAY_CATEGORY
+        category_action = self.lookup_action("tray-category")
+        if category_action is not None:
+            category_action.set_state(GLib.Variant.new_string(category))
+        if self.tray is not None:
+            self.tray.set_category(category)
         if self.window is not None:
             self.window.show_toast("App preferences reset")
 
@@ -320,9 +338,35 @@ class RawmApplication(Adw.Application):
             style = "ring" if settings.get("tray_percent", True) else "mouse"
         return style
 
+    def _initial_tray_category(self) -> str:
+        category = config.load().get("tray_category", config.DEFAULT_TRAY_CATEGORY)
+        if category not in dict(config.TRAY_CATEGORIES):
+            return config.DEFAULT_TRAY_CATEGORY
+        return category
+
     def _on_tray_style_action(self, _action, parameter) -> None:
         if parameter is not None:
             self._apply_tray_style(parameter.get_string())
+
+    def _on_tray_category_action(self, _action, parameter) -> None:
+        if parameter is not None:
+            self._apply_tray_category(parameter.get_string())
+
+    def _apply_tray_category(self, category: str) -> None:
+        if category not in dict(config.TRAY_CATEGORIES):
+            return
+        settings = config.load()
+        settings["tray_category"] = category
+        config.save(settings)
+        action = self.lookup_action("tray-category")
+        if action is not None and action.get_state().get_string() != category:
+            action.set_state(GLib.Variant.new_string(category))
+        if self.tray is not None:
+            self.tray.set_category(category)
+        if self.window is not None:
+            self.window.show_toast(
+                "Tray category updated — restart if Plasma keeps the old position"
+            )
 
     def _apply_tray_style(self, style: str) -> None:
         if style not in dict(config.TRAY_STYLES):

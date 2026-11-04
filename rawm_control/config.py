@@ -29,11 +29,20 @@ TRAY_STYLES = [
 ]
 DEFAULT_TRAY_STYLE = "ring"
 
+# SNI category hints. Plasma groups ApplicationStatus on the left side of the
+# third-party tray entries and Hardware with the system hardware icons.
+TRAY_CATEGORIES = [
+    ("ApplicationStatus", "Application status (left group)"),
+    ("Hardware", "Hardware"),
+]
+DEFAULT_TRAY_CATEGORY = "ApplicationStatus"
+
 DEFAULTS = {
     "start_hidden": False,
     "low_battery_notifications": True,
     "tray_percent": True,
     "tray_icon_style": DEFAULT_TRAY_STYLE,
+    "tray_category": DEFAULT_TRAY_CATEGORY,
 }
 
 

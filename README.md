@@ -199,6 +199,11 @@ AppIndicator extensions always show the menu on primary click. GNOME needs an
 AppIndicator/KStatusNotifierItem extension; KDE Plasma, XFCE and most other SNI
 hosts work directly.
 
+**Tray category:** the main menu and tray menu have a *Tray category* submenu.
+*Application status* (default) groups the icon with application indicators on
+the left; *Hardware* groups it with system hardware icons. Plasma may require a
+restart to apply a category change on some versions.
+
 ## Supported devices
 
 The app covers the RAWM family through the vendor capability database. **Only
