@@ -42,6 +42,10 @@ CSS = """
     font-size: 11px;
     font-weight: 700;
 }
+.demo-badge {
+    background-color: alpha(#e01b24, 0.22);
+    color: #ff7b72;
+}
 .battery-value { font-size: 31px; font-weight: 800; }
 .battery-sub { font-size: 10px; font-weight: 700; opacity: 0.75; }
 .value-label { font-feature-settings: "tnum"; }
@@ -51,6 +55,19 @@ CSS = """
 
 COLOR_LABELS = [name for name in COLOR_NAMES]
 COLOR_KEY_BY_INDEX = ["off", "red", "green", "blue", "yellow", "purple", "skyblue", "white"]
+
+
+def _same_labels(model, labels: list[str]) -> bool:
+    if model is None or model.get_n_items() != len(labels):
+        return False
+    return all(model.get_string(i) == label for i, label in enumerate(labels))
+
+
+def _set_combo_labels(combo, labels: list[str]) -> None:
+    """Only rebuild a Gtk.StringList when its contents actually changed."""
+    if _same_labels(combo.get_model(), labels):
+        return
+    combo.set_model(Gtk.StringList.new(labels))
 
 
 class BatteryGauge(Gtk.Overlay):
@@ -132,13 +149,16 @@ class MainWindow(Adw.ApplicationWindow):
         worker,
         on_settings_changed: Callable[[], None] | None = None,
         initial_page: str | None = None,
+        demo: bool = False,
     ) -> None:
         super().__init__(title="RAWM Control")
         self.worker = worker
+        self.demo = demo
         self._state: MouseState | None = None
         self._connected = False
         self._loading = False
         self._angle_timer = 0
+        self._edit_timer = 0
         self._levels: list[dict] = []
         self._key_index = 0
         self._kd_model_len = 0
@@ -264,8 +284,13 @@ class MainWindow(Adw.ApplicationWindow):
         self.badge_link.add_css_class("hero-badge")
         self.badge_sensor = Gtk.Label(label="")
         self.badge_sensor.add_css_class("hero-badge")
+        self.badge_demo = Gtk.Label(label="DEMO — simulated device")
+        self.badge_demo.add_css_class("hero-badge")
+        self.badge_demo.add_css_class("demo-badge")
+        self.badge_demo.set_visible(self.demo)
         badges.append(self.badge_link)
         badges.append(self.badge_sensor)
+        badges.append(self.badge_demo)
         badges.set_halign(Gtk.Align.START)
         text.append(self.hero_title)
         text.append(self.hero_sub)
@@ -450,7 +475,7 @@ class MainWindow(Adw.ApplicationWindow):
         keydelay.add(self.row_key)
         self.row_press = Adw.SpinRow(
             title="Press delay",
-            subtitle="milliseconds (low nibble of the key-delay byte)",
+            subtitle="milliseconds",
             adjustment=Gtk.Adjustment(value=2, lower=0, upper=10, step_increment=1),
         )
         self.row_press.set_digits(0)
@@ -657,8 +682,7 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _update_polling_combo(self, state: MouseState, caps) -> None:
         rates = devices.effective_polling_rates(state)
-        model = Gtk.StringList.new([caps.polling_label(hz) for hz in rates])
-        self.row_polling_combo.set_model(model)
+        _set_combo_labels(self.row_polling_combo, [caps.polling_label(hz) for hz in rates])
         try:
             selected = rates.index(state.polling_rate)
         except ValueError:
@@ -679,7 +703,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.row_angle.set_visible(bool(caps.angle_tuning))
 
         lods = caps.lod_names or ["LOW", "MEDIUM", "HIGH"]
-        self.row_lod_combo.set_model(Gtk.StringList.new([name.title() for name in lods]))
+        _set_combo_labels(self.row_lod_combo, [name.title() for name in lods])
         self.row_lod_combo.set_selected(max(0, min(len(lods) - 1, state.lod - 1)))
         if state.surface_quality:
             self.row_surface.set_subtitle(f"{round(state.surface_quality * 100 / 255)}% (sensor estimate)")
@@ -688,7 +712,7 @@ class MainWindow(Adw.ApplicationWindow):
             self.row_surface.set_visible(False)
 
         modes = caps.power_modes or ["Office", "LP", "HP", "Gaming+"]
-        self.row_power_combo.set_model(Gtk.StringList.new(modes))
+        _set_combo_labels(self.row_power_combo, modes)
         self.row_power_combo.set_selected(max(0, min(len(modes) - 1, state.power_mode)))
         self.row_sleep.set_value(max(1, min(30, round(state.sleep_time / 60) or 1)))
         wireless = not state.wired
@@ -777,12 +801,19 @@ class MainWindow(Adw.ApplicationWindow):
             return modes[state.power_mode]
         return str(state.power_mode)
 
+    def _schedule_write(self) -> None:
+        if self._edit_timer:
+            GLib.source_remove(self._edit_timer)
+        self._edit_timer = GLib.timeout_add(260, self._commit_edit)
+
+    def _commit_edit(self) -> bool:
+        self._edit_timer = 0
+        if self._state:
+            self._write(self._state)
+        return False
+
     def _write(self, state: MouseState, toast: str | None = None) -> None:
         self.worker.submit(state)
-        if toast:
-            saving = Adw.Toast.new("Saving…")
-            saving.set_timeout(2)
-            self.toast_overlay.add_toast(saving)
 
     def on_write_result(self, ok: bool, message: str) -> None:
         self.toast_overlay.add_toast(Adw.Toast.new(message))
@@ -814,10 +845,6 @@ class MainWindow(Adw.ApplicationWindow):
             return
         if not self.worker.restore_baseline():
             self.show_toast("No detected settings snapshot is available")
-            return
-        saving = Adw.Toast.new("Restoring detected settings…")
-        saving.set_timeout(2)
-        self.toast_overlay.add_toast(saving)
 
     def _on_polling_selected(self, row, _pspec) -> None:
         if self._loading or not self._state:
@@ -874,10 +901,7 @@ class MainWindow(Adw.ApplicationWindow):
         if self._state.key_delay[index] == value:
             return
         self._state.key_delay[index] = value & 0xFF
-        self._write(
-            self._state,
-            f"Button {index + 1}: {value & 0x0F} ms press / {(value >> 4) & 0x0F} ms release",
-        )
+        self._schedule_write()
 
     def _on_press_changed(self, row, _pspec) -> None:
         if self._loading or not self._state:
@@ -944,9 +968,6 @@ class MainWindow(Adw.ApplicationWindow):
         if abs(seconds - self._state.sleep_time) >= 30:
             self._state.sleep_time = seconds
             self.worker.submit_sleep_time(seconds)
-            saving = Adw.Toast.new("Saving…")
-            saving.set_timeout(2)
-            self.toast_overlay.add_toast(saving)
 
     def _on_cpi_changed(self, row, _pspec) -> None:
         if self._loading or not self._state:
@@ -956,7 +977,7 @@ class MainWindow(Adw.ApplicationWindow):
         value = max(caps.cpi_range[0], min(caps.cpi_range[1], value))
         if value != self._state.cpi:
             self._state.cpi = value
-            self._write(self._state, f"DPI: {value}")
+            self._schedule_write()
 
     def _on_level_changed(self, spin, index: int) -> None:
         if self._loading or not self._state:
@@ -964,7 +985,7 @@ class MainWindow(Adw.ApplicationWindow):
         value = int(round(spin.get_value()))
         if index < len(self._state.cpi_levels) and self._state.cpi_levels[index] != value:
             self._state.cpi_levels[index] = value
-            self._write(self._state, f"Level {index + 1}: {value or 'off'}")
+            self._schedule_write()
 
     def _on_level_color_changed(self, combo, _pspec, index: int) -> None:
         if self._loading or not self._state:

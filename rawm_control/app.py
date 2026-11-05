@@ -163,7 +163,7 @@ class RawmApplication(Adw.Application):
     def _ensure_window(self) -> MainWindow:
         if self.window is None:
             assert self.worker is not None
-            self.window = MainWindow(self.worker, initial_page=self.page)
+            self.window = MainWindow(self.worker, initial_page=self.page, demo=self.demo)
             self.window.set_icon_name("rawm-control")
             self.window.connect("close-request", self._on_close_request)
             self.add_window(self.window)
