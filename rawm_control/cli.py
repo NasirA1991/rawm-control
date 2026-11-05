@@ -66,6 +66,25 @@ def _verify(dev: RawmDevice) -> MouseState | None:
     return state
 
 
+def _apply_changes(dev: RawmDevice, state: MouseState, **changes) -> MouseState:
+    """Rebase a CLI intent onto a fresh snapshot before writing."""
+    fresh, _frames = dev.query(timeout=1.4)
+    if fresh is None:
+        raise protocol.ProtocolError("mouse did not answer the fresh query")
+    fresh.via_receiver = state.via_receiver
+    fresh.receiver_product_id = state.receiver_product_id
+    # Keep runtime-only values that are not part of a normal query result.
+    fresh.battery_levels = state.battery_levels or fresh.battery_levels
+    fresh.rssi = state.rssi
+    for name, value in changes.items():
+        setattr(fresh, name, value)
+    error = devices.validate_patch(fresh, changes)
+    if error:
+        raise protocol.ProtocolError(error)
+    dev.set_state(fresh)
+    return fresh
+
+
 def _print_status(state: MouseState) -> None:
     caps = devices.for_state(state)
     print(f"{caps.display_name}")
@@ -253,8 +272,7 @@ def run(argv: list[str]) -> int:
                         f"supported on this link/power mode: up to {maximum} Hz "
                         f"(presets: {presets})"
                     )
-                state.polling_rate = args.hz
-                dev.set_state(state)
+                _apply_changes(dev, state, polling_rate=args.hz)
                 new = _verify(dev)
                 if new and new.polling_rate == args.hz:
                     print(f"polling rate set to {args.hz} Hz")
@@ -271,8 +289,8 @@ def run(argv: list[str]) -> int:
                 if args.value is None:
                     print("on" if getattr(state, attr) else "off")
                     return 0
-                setattr(state, attr, 1 if args.value == "on" else 0)
-                dev.set_state(state)
+                value = 1 if args.value == "on" else 0
+                _apply_changes(dev, state, **{attr: value})
                 new = _verify(dev)
                 if new and getattr(new, attr) == getattr(state, attr):
                     print(f"{command}: {args.value}")
@@ -285,8 +303,7 @@ def run(argv: list[str]) -> int:
                     print(state.cpi)
                     return 0
                 value = max(caps.cpi_range[0], min(caps.cpi_range[1], args.value))
-                state.cpi = value
-                dev.set_state(state)
+                _apply_changes(dev, state, cpi=value)
                 new = _verify(dev)
                 if new and new.cpi == value:
                     print(f"dpi set to {value}")
@@ -300,8 +317,7 @@ def run(argv: list[str]) -> int:
                     return 0
                 if not 1 <= args.value <= 3:
                     parser.error("lod must be 1, 2 or 3")
-                state.lod = args.value
-                dev.set_state(state)
+                _apply_changes(dev, state, lod=args.value)
                 new = _verify(dev)
                 if new and new.lod == args.value:
                     print(f"lod set to {args.value}")
@@ -324,8 +340,7 @@ def run(argv: list[str]) -> int:
                     index = matches[0]
                 if not 0 <= index < len(modes):
                     parser.error(f"power modes: {', '.join(modes)}")
-                state.power_mode = index
-                dev.set_state(state)
+                _apply_changes(dev, state, power_mode=index)
                 new = _verify(dev)
                 if new and new.power_mode == index:
                     print(f"power mode set to {modes[index]}")

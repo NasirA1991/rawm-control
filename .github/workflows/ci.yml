@@ -28,12 +28,27 @@ jobs:
         run: |
           desktop-file-validate data/io.github.rawmcontrol.RawmControl.desktop
           appstreamcli validate data/io.github.rawmcontrol.RawmControl.metainfo.xml
-      - name: Headless UI smoke test
+      - name: Headless UI smoke test and quit
         run: |
-          set +e
-          timeout 8 dbus-run-session -- xvfb-run -a python3 -m rawm_control --demo --no-tray >/tmp/ui.log 2>&1
-          status=$?
+          timeout 20 dbus-run-session -- xvfb-run -a bash -c '
+            python3 -m rawm_control --demo --no-tray >/tmp/ui.log 2>&1 &
+            pid=$!
+            for i in $(seq 1 10); do
+              if gdbus call --session                   --dest io.github.rawmcontrol.RawmControl                   --object-path /io/github/rawmcontrol/RawmControl                   --method org.gtk.Actions.Activate quit "[]" "{}" >/dev/null 2>&1; then
+                break
+              fi
+              sleep 1
+            done
+            for i in $(seq 1 10); do
+              kill -0 "$pid" 2>/dev/null || break
+              sleep 0.5
+            done
+            if kill -0 "$pid" 2>/dev/null; then
+              kill "$pid" 2>/dev/null || true
+              cat /tmp/ui.log
+              echo "UI did not quit cleanly" >&2
+              exit 1
+            fi
+            wait "$pid"
+          '
           cat /tmp/ui.log
-          if [ "$status" -ne 0 ] && [ "$status" -ne 124 ]; then
-            exit "$status"
-          fi

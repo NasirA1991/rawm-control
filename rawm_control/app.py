@@ -216,7 +216,6 @@ class RawmApplication(Adw.Application):
             self.send_notification("low-battery", note)
         elif state.battery > 20 or state.charging:
             self._low_battery_notified = False
-        self._activated_once = False
         return False
 
     def _apply_link(self, connected: bool, error: str | None) -> bool:
@@ -410,7 +409,7 @@ def main(argv: list[str] | None = None) -> int:
     if args and args[0] in cli.CLI_COMMANDS:
         return cli.run(args)
     if args and args[0] in ("-h", "--help"):
-        print("Usage: rawm-control [--tray] [--cli <command>]")
+        print("Usage: rawm-control [--tray|--no-tray] [--demo] [--page PAGE] [--cli <command>]")
         print("       rawm-control <status|scan|caps|report|polling|motion-sync|dpi|lod|power|sleep> ...\n")
         cli.build_parser().print_help()
         return 0

@@ -309,6 +309,16 @@ class DeviceWorker:
             self._pending_patch = None
         self._emit_link(False, reason)
 
+    def _preserve_runtime_fields(self, fresh: MouseState) -> MouseState:
+        """Carry connection metadata and runtime-only values across queries."""
+        with self._lock:
+            previous = self._state
+        fresh.via_receiver = self._via_receiver
+        fresh.receiver_product_id = self._receiver_pid
+        fresh.battery_levels = previous.battery_levels or fresh.battery_levels
+        fresh.rssi = previous.rssi
+        return fresh
+
     def _perform_query(self, requested: bool = False) -> None:
         device = self._device
         if device is None:
@@ -352,17 +362,12 @@ class DeviceWorker:
                 ok,
                 "Sleep timer saved" if ok else "Mouse did not confirm the sleep timer",
             )
+        apply_notifications(state, frames)
         # Receiver metadata belongs to the connection, not to the JSON query
         # result.  A refresh must not downgrade an 8K receiver link to a
-        # direct 2.4 GHz one.
-        state.via_receiver = self._via_receiver
-        state.receiver_product_id = self._receiver_pid
-        apply_notifications(state, frames)
+        # direct 2.4 GHz one, and runtime-only values must survive.
+        state = self._preserve_runtime_fields(state)
         with self._lock:
-            previous = self._state
-            # keep values only the notifications know about
-            state.battery_levels = previous.battery_levels or state.battery_levels
-            state.rssi = previous.rssi
             self._state = state
         self._last_query = time.monotonic()
         self._emit_state(set())
@@ -391,9 +396,8 @@ class DeviceWorker:
                 if fresh is None:
                     self._emit_write(False, "Mouse did not answer; change not saved")
                     return
-                fresh.via_receiver = self._via_receiver
-                fresh.receiver_product_id = self._receiver_pid
                 apply_notifications(fresh, frames)
+                fresh = self._preserve_runtime_fields(fresh)
                 error = devices.validate_patch(fresh, pending_patch)
                 if error:
                     self._emit_write(False, f"Change rejected: {error}")
@@ -553,8 +557,8 @@ class DemoWorker:
         self.on_state(copy.deepcopy(self._state), set())
 
     def stop(self, timeout: float = 2.0) -> None:
+        # DemoWorker has no thread to stop; keep this as a safe no-op.
         self._stop.set()
-        self._wake.set()
 
     def submit(self, state: MouseState) -> bool:
         self._state = copy.deepcopy(state)

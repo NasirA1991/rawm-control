@@ -14,7 +14,7 @@ for arg in "$@"; do
     case "$arg" in
         --user) USER_INSTALL=1 ;;
         -h|--help)
-            sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'
+            sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//'
             exit 0
             ;;
         *) echo "unknown option: $arg" >&2; exit 2 ;;

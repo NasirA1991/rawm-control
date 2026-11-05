@@ -7,7 +7,7 @@ import unittest
 from unittest.mock import patch
 
 from rawm_control.protocol import CMD_QUERY_RESULT, Frame, HidrawDevice, MouseState
-from rawm_control.worker import DeviceWorker
+from rawm_control.worker import DemoWorker, DeviceWorker
 
 
 class FakeDevice:
@@ -58,10 +58,16 @@ class WorkerLifecycleTest(unittest.TestCase):
             product_id=0x2338,
             polling_rate=1000,
         )
+        old = MouseState(
+            device_name="ER21Pro",
+            product_id=0x2338,
+            rssi=-42,
+            battery_levels=[3000, 3100, 3200, 3300, 3400],
+        )
         worker._device = FakeDevice("/dev/hidraw-test", (mouse, []))
         worker._via_receiver = True
         worker._receiver_pid = 0x232B
-        worker._state = mouse
+        worker._state = old
 
         worker._perform_query()
 
@@ -69,7 +75,13 @@ class WorkerLifecycleTest(unittest.TestCase):
         self.assertTrue(state.via_receiver)
         self.assertEqual(state.receiver_product_id, 0x232B)
         self.assertEqual(state.product_id, 0x2338)
+        self.assertEqual(state.rssi, -42)
+        self.assertEqual(state.battery_levels, [3000, 3100, 3200, 3300, 3400])
         self.assertTrue(states)
+
+    def test_demo_worker_stop_does_not_crash(self):
+        worker = DemoWorker(lambda s, c: None, lambda c, e: None)
+        worker.stop()
 
     def test_user_refresh_disconnects_immediately_on_miss(self):
         worker, _states, links, _writes = self.make_worker()
@@ -106,7 +118,13 @@ class WorkerLifecycleTest(unittest.TestCase):
 
     def test_write_rebases_patch_on_fresh_state_and_confirms(self):
         worker, _states, _links, writes = self.make_worker()
-        old = MouseState(product_id=0x2338, cpi=1600, motion_sync=0)
+        old = MouseState(
+            product_id=0x2338,
+            cpi=1600,
+            motion_sync=0,
+            rssi=-51,
+            battery_levels=[2900, 3000, 3100, 3200, 3300],
+        )
         fresh = MouseState(product_id=0x2338, cpi=1600, motion_sync=1)
         confirmed = MouseState(product_id=0x2338, cpi=3200, motion_sync=1)
         fake = FakeDevice("/dev/null", result=(confirmed, []), results=[(fresh, [])])
@@ -114,7 +132,8 @@ class WorkerLifecycleTest(unittest.TestCase):
         worker._state = old
         worker._last_query = 0
 
-        wanted = MouseState(product_id=0x2338, cpi=3200, motion_sync=0)
+        wanted = __import__("copy").deepcopy(old)
+        wanted.cpi = 3200
         worker.submit(wanted)
         worker._loop_connected()
 
@@ -122,6 +141,8 @@ class WorkerLifecycleTest(unittest.TestCase):
         self.assertEqual(fake.written[0].cpi, 3200)
         # An external motion-sync change must survive the CPI patch.
         self.assertEqual(fake.written[0].motion_sync, 1)
+        self.assertEqual(fake.written[0].rssi, -51)
+        self.assertEqual(fake.written[0].battery_levels, [2900, 3000, 3100, 3200, 3300])
 
         worker._perform_query()
         self.assertEqual(writes[-1][0], True)

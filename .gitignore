@@ -21,3 +21,6 @@ flatpak-repo/
 *.flatpak
 AppDir/
 dist/
+
+# generated device reports are local-only
+rawm-control-report-*.md
