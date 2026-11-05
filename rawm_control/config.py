@@ -8,7 +8,7 @@ from pathlib import Path
 
 APP_ID = "io.github.rawmcontrol.RawmControl"
 APP_NAME = "RAWM Control"
-VERSION = "0.1.12"
+VERSION = "0.1.13"
 
 
 def config_dir() -> Path:

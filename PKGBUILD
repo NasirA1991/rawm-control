@@ -4,7 +4,7 @@
 # source=() and sha256sums=() are intentional. For a SHA-verified package use
 # the AUR `rawm-control` package or a release tarball.
 pkgname=rawm-control
-pkgver=0.1.12
+pkgver=0.1.13
 pkgrel=1
 pkgdesc="Native GTK4/libadwaita configuration tool for RAWM gaming mice"
 arch=('any')
