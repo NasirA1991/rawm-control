@@ -43,6 +43,7 @@ DEFAULTS = {
     "tray_percent": True,
     "tray_icon_style": DEFAULT_TRAY_STYLE,
     "tray_category": DEFAULT_TRAY_CATEGORY,
+    "close_hint_shown": False,
 }
 
 
@@ -61,6 +62,13 @@ def save(data: dict) -> None:
         config_path().write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     except OSError:
         pass
+
+
+def mark_close_hint_shown() -> bool:
+    data = load()
+    data["close_hint_shown"] = True
+    save(data)
+    return True
 
 
 def reset() -> bool:

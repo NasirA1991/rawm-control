@@ -6,7 +6,14 @@ import unittest
 
 from rawm_control.config import TRAY_STYLES
 from rawm_control.protocol import MouseState
-from rawm_control.tray import ICON_SIZE, render_icon, render_percent_icon, render_tray_icon
+from rawm_control.tray import (
+    ICON_SIZE,
+    TRAY_ICON_SIZES,
+    render_icon,
+    render_percent_icon,
+    render_tray_icon,
+    render_tray_icon_sizes,
+)
 
 
 class TrayIconTests(unittest.TestCase):
@@ -38,6 +45,17 @@ class TrayIconTests(unittest.TestCase):
             rendered[key] = pixels
         # every visible style should be visually distinct
         self.assertGreaterEqual(len(set(rendered.values())), len(TRAY_STYLES) - 1)
+
+    def test_multiple_pixmap_sizes_are_emitted(self):
+        state = MouseState(battery=87)
+        items = render_tray_icon_sizes(state, True, "ring")
+        self.assertEqual([(w, h) for w, h, _ in items], [(n, n) for n in TRAY_ICON_SIZES])
+        self.assertTrue(all(pixels for _, _, pixels in items))
+
+    def test_charging_bolt_changes_the_icon(self):
+        normal = render_tray_icon_sizes(MouseState(battery=87, charging=False), True, "number")[0][2]
+        charging = render_tray_icon_sizes(MouseState(battery=87, charging=True), True, "number")[0][2]
+        self.assertNotEqual(normal, charging)
 
     def test_charging_and_low_battery_do_not_crash(self):
         for battery in (0, 12, 100):

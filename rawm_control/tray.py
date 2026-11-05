@@ -42,6 +42,7 @@ ID_REFRESH = 8
 ID_QUIT = 9
 
 ICON_SIZE = 64
+TRAY_ICON_SIZES = (22, 32, 48, 64)
 
 
 def _argb_pixmap(surface: cairo.ImageSurface) -> list[tuple[int, int, bytes]]:
@@ -102,17 +103,38 @@ def _text(ctx, value, cx, cy, size, color=(1, 1, 1), outline=(0.02, 0.03, 0.05),
     ctx.fill()
 
 
-def _canvas():
-    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, ICON_SIZE, ICON_SIZE)
+def _canvas(size: int = ICON_SIZE):
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
     ctx = cairo.Context(surface)
+    # All icon coordinates are authored on a 64 px grid.
+    ctx.scale(size / ICON_SIZE, size / ICON_SIZE)
     ctx.set_line_cap(cairo.LINE_CAP_ROUND)
     ctx.set_line_join(cairo.LINE_JOIN_ROUND)
     return surface, ctx
 
 
-def render_mouse_icon(state: MouseState | None, connected: bool) -> list[tuple[int, int, bytes]]:
+def _charging_bolt(ctx: cairo.Context, cx: float, cy: float, radius: float = 9.0) -> None:
+    """A shape, not just a colour change, so charging is visible/accessibility-safe."""
+    ctx.arc(cx, cy, radius, 0, 2 * math.pi)
+    ctx.set_source_rgba(0.02, 0.03, 0.05, 0.96)
+    ctx.fill()
+    ctx.set_line_width(1.4)
+    ctx.set_source_rgba(1.0, 1.0, 1.0, 0.95)
+    ctx.stroke()
+    ctx.move_to(cx + 1.0, cy - 6.0)
+    ctx.line_to(cx - 4.2, cy + 0.8)
+    ctx.line_to(cx - 0.7, cy + 0.8)
+    ctx.line_to(cx - 1.0, cy + 6.0)
+    ctx.line_to(cx + 4.2, cy - 1.2)
+    ctx.line_to(cx + 0.7, cy - 1.2)
+    ctx.close_path()
+    ctx.set_source_rgba(1.0, 1.0, 1.0, 1.0)
+    ctx.fill()
+
+
+def render_mouse_icon(state: MouseState | None, connected: bool, size: int = ICON_SIZE) -> list[tuple[int, int, bytes]]:
     """Mouse glyph with a small battery column (no digits)."""
-    surface, ctx = _canvas()
+    surface, ctx = _canvas(size)
     accent, level, charging, _text_value = _accent(state, connected)
     fg = (1.0, 1.0, 1.0) if connected else (0.62, 0.62, 0.66)
     body_fill = (0.22, 0.47, 0.88) if connected else (0.42, 0.44, 0.50)
@@ -151,12 +173,14 @@ def render_mouse_icon(state: MouseState | None, connected: bool) -> list[tuple[i
         ctx.move_to(37.0, 32.0)
         ctx.line_to(31.0, 38.0)
         ctx.stroke()
+    if charging:
+        _charging_bolt(ctx, 50.0, 13.0, 9.0)
     return _argb_pixmap(surface)
 
 
-def render_ring_icon(state: MouseState | None, connected: bool) -> list[tuple[int, int, bytes]]:
+def render_ring_icon(state: MouseState | None, connected: bool, size: int = ICON_SIZE) -> list[tuple[int, int, bytes]]:
     """Progress ring around a mouse glyph with the percentage inside."""
-    surface, ctx = _canvas()
+    surface, ctx = _canvas(size)
     accent, level, charging, value = _accent(state, connected)
 
     ctx.set_source_rgba(0.045, 0.055, 0.075, 0.95)
@@ -182,12 +206,14 @@ def render_ring_icon(state: MouseState | None, connected: bool) -> list[tuple[in
     _rounded_rect(ctx, 29.5, 18.0, 5.0, 7.0, 2.5)
     ctx.fill()
     _text(ctx, value, 32.0, 38.5, 19.0 if len(value) <= 2 else 13.0)
+    if charging:
+        _charging_bolt(ctx, 51.0, 13.0, 8.0)
     return _argb_pixmap(surface)
 
 
-def render_number_icon(state: MouseState | None, connected: bool) -> list[tuple[int, int, bytes]]:
+def render_number_icon(state: MouseState | None, connected: bool, size: int = ICON_SIZE) -> list[tuple[int, int, bytes]]:
     """Large percentage only.  The most readable style on tiny panels."""
-    surface, ctx = _canvas()
+    surface, ctx = _canvas(size)
     accent, level, charging, value = _accent(state, connected)
 
     _rounded_rect(ctx, 3.0, 3.0, 58.0, 58.0, 15.0)
@@ -199,12 +225,14 @@ def render_number_icon(state: MouseState | None, connected: bool) -> list[tuple[
 
     size = 36.0 if len(value) <= 2 else 26.0
     _text(ctx, value, 32.0, 33.0, size, (1, 1, 1), (0.02, 0.03, 0.05), 1.6)
+    if charging:
+        _charging_bolt(ctx, 52.0, 51.0, 8.0)
     return _argb_pixmap(surface)
 
 
-def render_battery_icon(state: MouseState | None, connected: bool) -> list[tuple[int, int, bytes]]:
+def render_battery_icon(state: MouseState | None, connected: bool, size: int = ICON_SIZE) -> list[tuple[int, int, bytes]]:
     """Classic battery outline with the percentage inside."""
-    surface, ctx = _canvas()
+    surface, ctx = _canvas(size)
     accent, level, charging, value = _accent(state, connected)
 
     body = (9.0, 14.0, 46.0, 40.0, 9.0)
@@ -230,12 +258,14 @@ def render_battery_icon(state: MouseState | None, connected: bool) -> list[tuple
         ctx.restore()
 
     _text(ctx, value, 32.0, 34.0, 28.0 if len(value) <= 2 else 20.0)
+    if charging:
+        _charging_bolt(ctx, 52.0, 12.0, 8.0)
     return _argb_pixmap(surface)
 
 
-def render_sidecar_icon(state: MouseState | None, connected: bool) -> list[tuple[int, int, bytes]]:
+def render_sidecar_icon(state: MouseState | None, connected: bool, size: int = ICON_SIZE) -> list[tuple[int, int, bytes]]:
     """Narrow mouse glyph with a big percentage beside it."""
-    surface, ctx = _canvas()
+    surface, ctx = _canvas(size)
     accent, level, charging, value = _accent(state, connected)
 
     ctx.set_line_width(2.7)
@@ -246,6 +276,8 @@ def render_sidecar_icon(state: MouseState | None, connected: bool) -> list[tuple
     _rounded_rect(ctx, 13.0, 10.0, 5.0, 8.0, 2.5)
     ctx.fill()
     _text(ctx, value, 46.0, 32.0, 30.0 if len(value) <= 2 else 21.0, accent, (0.02, 0.03, 0.05), 3.0)
+    if charging:
+        _charging_bolt(ctx, 8.0, 52.0, 8.0)
     return _argb_pixmap(surface)
 
 
@@ -260,6 +292,19 @@ _RENDERERS = {
 
 def render_tray_icon(state: MouseState | None, connected: bool, style: str = DEFAULT_TRAY_STYLE):
     return _RENDERERS.get(style, render_ring_icon)(state, connected)
+
+
+def render_tray_icon_sizes(
+    state: MouseState | None,
+    connected: bool,
+    style: str = DEFAULT_TRAY_STYLE,
+    sizes: tuple[int, ...] = TRAY_ICON_SIZES,
+) -> list[tuple[int, int, bytes]]:
+    renderer = _RENDERERS.get(style, render_ring_icon)
+    out: list[tuple[int, int, bytes]] = []
+    for size in sizes:
+        out.extend(renderer(state, connected, size))
+    return out
 
 
 # backwards-compatible helpers
@@ -322,7 +367,7 @@ class Tray(dbus.service.Object):
         # no mouse is connected; it becomes Active as soon as one is present.
         self.sni_status = "Passive"
         self.polling_rates = [125, 250, 500, 1000]
-        self._icon = render_tray_icon(None, False, self.style)
+        self._icon = render_tray_icon_sizes(None, False, self.style)
 
         # Flatpak does not allow owning the conventional PID-based SNI name
         # (wildcards are invalid), so inside the sandbox use a name derived from
@@ -360,7 +405,7 @@ class Tray(dbus.service.Object):
         else:
             self._status_text = message or "Click to open RAWM Control"
         self.sni_status = "Active" if connected and state is not None else "Passive"
-        self._icon = render_tray_icon(state, connected, self.style)
+        self._icon = render_tray_icon_sizes(state, connected, self.style)
         self._emit("NewIcon")
         self._emit("NewToolTip")
         self._emit("NewTitle")
@@ -390,7 +435,7 @@ class Tray(dbus.service.Object):
         if style not in STYLE_KEYS or style == self.style:
             return
         self.style = style
-        self._icon = render_tray_icon(self.state, self.connected, style)
+        self._icon = render_tray_icon_sizes(self.state, self.connected, style)
         self._emit("NewIcon")
         self.menu.refresh()
 

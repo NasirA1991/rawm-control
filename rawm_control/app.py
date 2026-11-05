@@ -176,6 +176,15 @@ class RawmApplication(Adw.Application):
 
     def _on_close_request(self, _window) -> bool:
         if self.tray is not None and not self._quitting:
+            if not config.load().get("close_hint_shown", False):
+                config.mark_close_hint_shown()
+                note = Gio.Notification.new("RAWM Control is still running")
+                note.set_body(
+                    "It continues in the background. Reopen it from your app menu; "
+                    "the tray icon appears when a mouse connects."
+                )
+                note.set_icon(Gio.ThemedIcon.new("rawm-control"))
+                self.send_notification("close-hint", note)
             self.window.set_visible(False)
             return True
         return False

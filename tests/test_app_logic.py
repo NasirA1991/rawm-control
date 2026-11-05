@@ -12,12 +12,13 @@ from rawm_control.protocol import MouseState
 class FakeWindow:
     def __init__(self):
         self.presented = False
+        self.visible = True
 
     def present(self):
         self.presented = True
 
-    def set_visible(self, _visible):
-        pass
+    def set_visible(self, visible):
+        self.visible = visible
 
 
 class AppActivationTest(unittest.TestCase):
@@ -41,6 +42,35 @@ class AppActivationTest(unittest.TestCase):
             app._apply_state(MouseState(battery=80), set())
 
         self.assertTrue(app._activated_once)
+
+    def test_first_close_shows_one_time_background_hint(self):
+        app = RawmApplication.__new__(RawmApplication)
+        app.window = FakeWindow()
+        app.tray = object()
+        app._quitting = False
+        notifications = []
+        app.send_notification = lambda key, note: notifications.append(key)
+
+        with patch("rawm_control.app.config.load", return_value={"close_hint_shown": False}),              patch("rawm_control.app.config.mark_close_hint_shown") as mark:
+            self.assertTrue(app._on_close_request(None))
+
+        self.assertFalse(app.window.visible)
+        self.assertEqual(notifications, ["close-hint"])
+        mark.assert_called_once()
+
+    def test_second_close_does_not_repeat_hint(self):
+        app = RawmApplication.__new__(RawmApplication)
+        app.window = FakeWindow()
+        app.tray = object()
+        app._quitting = False
+        notifications = []
+        app.send_notification = lambda key, note: notifications.append(key)
+
+        with patch("rawm_control.app.config.load", return_value={"close_hint_shown": True}),              patch("rawm_control.app.config.mark_close_hint_shown") as mark:
+            self.assertTrue(app._on_close_request(None))
+
+        self.assertEqual(notifications, [])
+        mark.assert_not_called()
 
     def test_second_activation_reveals_hidden_tray_instance(self):
         app = self.make_app()

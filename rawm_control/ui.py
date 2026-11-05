@@ -46,6 +46,14 @@ CSS = """
     background-color: alpha(#e01b24, 0.22);
     color: #ff7b72;
 }
+.trust-badge {
+    background-color: alpha(#e5a50a, 0.22);
+    color: #f5c211;
+}
+.permission-bar {
+    background-color: alpha(#e5a50a, 0.12);
+    padding: 6px 12px;
+}
 .battery-value { font-size: 31px; font-weight: 800; }
 .battery-sub { font-size: 10px; font-weight: 700; opacity: 0.75; }
 .value-label { font-feature-settings: "tnum"; }
@@ -55,6 +63,13 @@ CSS = """
 
 COLOR_LABELS = [name for name in COLOR_NAMES]
 COLOR_KEY_BY_INDEX = ["off", "red", "green", "blue", "yellow", "purple", "skyblue", "white"]
+
+UDEV_COMMAND = (
+    "echo 'SUBSYSTEM==\"hidraw\", ATTRS{idVendor}==\"1915\", "
+    "TAG+=\"uaccess\", MODE=\"0660\"' | "
+    "sudo tee /usr/lib/udev/rules.d/71-rawm-hid.rules >/dev/null\n"
+    "sudo udevadm control --reload-rules && sudo udevadm trigger"
+)
 
 
 def _same_labels(model, labels: list[str]) -> bool:
@@ -73,6 +88,7 @@ def _set_combo_labels(combo, labels: list[str]) -> None:
 class BatteryGauge(Gtk.Overlay):
     def __init__(self) -> None:
         super().__init__()
+        self.set_accessible_role(Gtk.AccessibleRole.PROGRESS_BAR)
         self._percent = 0
         self._charging = False
         self._connected = False
@@ -100,12 +116,32 @@ class BatteryGauge(Gtk.Overlay):
             self._charging = False
             self._value.set_text("--")
             self._sub.set_text("no mouse")
+            self._update_accessible("Battery unavailable; no mouse connected", 0)
         else:
             self._percent = max(0, min(100, state.battery))
             self._charging = state.charging
             self._value.set_text(f"{self._percent}%")
             self._sub.set_text("charging" if state.charging else ("wired" if state.wired else "wireless"))
+            label = f"Battery {self._percent}%"
+            if state.charging:
+                label += ", charging"
+            self._update_accessible(label, self._percent)
         self._area.queue_draw()
+
+    def _update_accessible(self, label: str, value: int) -> None:
+        try:
+            self.update_property(
+                [
+                    Gtk.AccessibleProperty.LABEL,
+                    Gtk.AccessibleProperty.VALUE_MIN,
+                    Gtk.AccessibleProperty.VALUE_MAX,
+                    Gtk.AccessibleProperty.VALUE_NOW,
+                    Gtk.AccessibleProperty.VALUE_TEXT,
+                ],
+                [label, 0, 100, value, label],
+            )
+        except (AttributeError, TypeError):
+            pass
 
     def _draw(self, area: Gtk.DrawingArea, cr, width: int, height: int) -> None:
         cx, cy = width / 2, height / 2
@@ -191,6 +227,21 @@ class MainWindow(Adw.ApplicationWindow):
         self.banner.connect("button-clicked", lambda *_: self.worker.refresh())
         self.banner.set_revealed(False)
         root.append(self.banner)
+
+        self.permission_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.permission_bar.add_css_class("permission-bar")
+        self.permission_bar.set_visible(False)
+        permission_label = Gtk.Label(
+            label="Missing hidraw permission. Install the udev rule on the host once.",
+            xalign=0,
+        )
+        permission_label.set_hexpand(True)
+        permission_label.set_wrap(True)
+        self.permission_copy = Gtk.Button(label="Copy setup command")
+        self.permission_copy.connect("clicked", self._on_copy_udev)
+        self.permission_bar.append(permission_label)
+        self.permission_bar.append(self.permission_copy)
+        root.append(self.permission_bar)
 
         self.stack = Adw.ViewStack()
         self.stack.add_titled_with_icon(
@@ -288,9 +339,18 @@ class MainWindow(Adw.ApplicationWindow):
         self.badge_demo.add_css_class("hero-badge")
         self.badge_demo.add_css_class("demo-badge")
         self.badge_demo.set_visible(self.demo)
+        self.badge_trust = Gtk.Label(label="UNVERIFIED MODEL")
+        self.badge_trust.add_css_class("hero-badge")
+        self.badge_trust.add_css_class("trust-badge")
+        self.badge_trust.set_tooltip_text(
+            "This model is supported by the vendor capability database, but has not "
+            "been verified on physical hardware."
+        )
+        self.badge_trust.set_visible(False)
         badges.append(self.badge_link)
         badges.append(self.badge_sensor)
         badges.append(self.badge_demo)
+        badges.append(self.badge_trust)
         badges.set_halign(Gtk.Align.START)
         text.append(self.hero_title)
         text.append(self.hero_sub)
@@ -628,6 +688,7 @@ class MainWindow(Adw.ApplicationWindow):
 
             self.row_model.set_subtitle(caps.display_name)
             self.row_trust.set_subtitle(devices.support_status(caps))
+            self.badge_trust.set_visible(caps.mouse and caps.product_id != 0x2338)
             self.restore_button.set_sensitive(bool(getattr(self.worker, "has_baseline", False)))
             self.row_firmware.set_subtitle(state.firmware or "unknown")
             self.row_sensor.set_subtitle(state.sensor or caps.sensor or "unknown")
@@ -665,8 +726,10 @@ class MainWindow(Adw.ApplicationWindow):
         self._connected = connected
         if connected:
             self.banner.set_revealed(False)
+            self.permission_bar.set_visible(False)
             return
         self._state = None
+        self.badge_trust.set_visible(False)
         self.restore_button.set_sensitive(False)
         self.stack.set_sensitive(False)
         self.gauge.set_state(None, False)
@@ -679,6 +742,10 @@ class MainWindow(Adw.ApplicationWindow):
         self.badge_sensor.set_text("")
         self.banner.set_title(error or "Mouse not connected")
         self.banner.set_revealed(True)
+        permission = bool(error and any(
+            word in error.lower() for word in ("permission", "udev", "hidraw")
+        ))
+        self.permission_bar.set_visible(permission)
 
     def _update_polling_combo(self, state: MouseState, caps) -> None:
         rates = devices.effective_polling_rates(state)
@@ -692,6 +759,12 @@ class MainWindow(Adw.ApplicationWindow):
         self.row_polling_combo.set_subtitle(
             f"Up to {caps.polling_label(maximum)} on this link and power mode"
         )
+
+    def _on_copy_udev(self, _button) -> None:
+        display = Gdk.Display.get_default()
+        if display is not None:
+            display.get_clipboard().set(UDEV_COMMAND)
+        self.show_toast("Setup command copied — run it on the host")
 
     def _update_performance(self, state: MouseState, caps) -> None:
         self.row_motion.set_active(bool(state.motion_sync))

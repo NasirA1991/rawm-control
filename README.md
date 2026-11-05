@@ -149,8 +149,9 @@ The vendor HID collection is `/dev/hidrawN`, normally `root:root` with a udev
 `uaccess` ACL. The rule is vendor-wide (`1915`), while the app itself only opens
 known mouse products and rejects keyboards/unknown devices.
 
-For a source or AppImage install, add the rule once (the source copy is at
-`data/udev/71-rawm-hid.rules`):
+If the app reports a permission error, its Device banner offers **Copy setup
+command** with the exact host command. For a source or AppImage install, add the
+rule once (the source copy is at `data/udev/71-rawm-hid.rules`):
 
 ```bash
 echo 'SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1915", TAG+="uaccess", MODE="0660"' \
@@ -199,6 +200,9 @@ AppIndicator extensions always show the menu on primary click. GNOME needs an
 AppIndicator/KStatusNotifierItem extension; KDE Plasma, XFCE and most other SNI
 hosts work directly.
 
+Tray icons are sent at 22, 32, 48 and 64 px; charging adds a small bolt rather
+than changing colour only.
+
 **Tray category:** the main menu and tray menu have a *Tray category* submenu.
 *Application status* (default) groups the icon with application indicators on
 the left; *Hardware* groups it with system hardware icons. Plasma may require a
@@ -214,8 +218,9 @@ The app covers the RAWM family through the vendor capability database. **Only
 the ER21Pro is hardware-verified.** See
 [docs/DEVICES.md](docs/DEVICES.md) for every model, USB ID and polling limit.
 
-Receiver dongles are supported. Unknown PIDs and keyboards are read-only: the
-app will not send mouse configuration to them. To help verify another model,
+Receiver dongles are supported. Unverified models get a visible **UNVERIFIED
+MODEL** badge. Unknown PIDs and keyboards are read-only: the app will not send
+mouse configuration to them. To help verify another model,
 use **Device → Diagnostics → Save device report**, review the file and attach
 it to a [device support issue](https://github.com/NasirA1991/rawm-control/issues/new?template=device-report.yml).
 Nothing is uploaded automatically.
