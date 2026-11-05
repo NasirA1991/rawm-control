@@ -27,7 +27,7 @@ jobs:
       - name: Validate desktop and AppStream metadata
         run: |
           desktop-file-validate data/io.github.rawmcontrol.RawmControl.desktop
-          appstreamcli validate data/io.github.rawmcontrol.RawmControl.metainfo.xml
+          appstreamcli validate --no-net data/io.github.rawmcontrol.RawmControl.metainfo.xml
       - name: Headless UI smoke test and quit
         run: |
           timeout 20 dbus-run-session -- xvfb-run -a bash -c '
