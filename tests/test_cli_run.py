@@ -81,6 +81,7 @@ class CliRunTest(unittest.TestCase):
         with redirect_stdout(io.StringIO()) as out:
             self.assertEqual(cli.main(["help"]), 0)
         self.assertIn("status", out.getvalue())
+        self.assertIn("usage: rawmctl", out.getvalue())
 
     def test_unknown_command_is_an_argparse_error(self):
         with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as exc:

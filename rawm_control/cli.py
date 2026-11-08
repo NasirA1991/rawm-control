@@ -130,9 +130,9 @@ def _parse_bool(value: str) -> bool:
     return value.lower() in ("1", "on", "true", "yes", "enable", "enabled")
 
 
-def build_parser() -> argparse.ArgumentParser:
+def build_parser(prog: str = "rawm-control") -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="rawm-control",
+        prog=prog,
         description="Control RAWM mice over their vendor HID interface.",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {config.VERSION}")
@@ -187,13 +187,13 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=os.environ.get("RAWM_CONTROL_LOG", "WARNING"))
     args = list(sys.argv[1:] if argv is None else argv)
     if args and args[0] in ("help", "-h", "--help"):
-        build_parser().print_help()
+        build_parser(prog="rawmctl").print_help()
         return 0
-    return run(args)
+    return run(args, prog="rawmctl")
 
 
-def run(argv: list[str]) -> int:
-    parser = build_parser()
+def run(argv: list[str], prog: str = "rawm-control") -> int:
+    parser = build_parser(prog=prog)
     args = parser.parse_args(argv)
     command = args.command or "status"
 
