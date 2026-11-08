@@ -6,9 +6,12 @@ swaybar, waybar, ...) so the GTK4 process never has to load GTK3 libraries.
 
 from __future__ import annotations
 
+import logging
 import math
 import os
 from typing import Callable
+
+logger = logging.getLogger(__name__)
 
 import cairo
 import dbus
@@ -28,11 +31,13 @@ ID_STATUS = 1
 ID_SEP1 = 2
 ID_POLLING = 3
 ID_DPI = 10
-ID_POLLING_BASE = 30
-ID_DPI_BASE = 40
-ID_STYLE_BASE = 50
+# Keep large gaps between ID ranges.  Menu IDs are internal, but a range must
+# never overlap another even if a future model exposes hundreds of rates.
+ID_POLLING_BASE = 100
+ID_DPI_BASE = 1000
+ID_STYLE_BASE = 2000
 ID_CATEGORY = 12
-ID_CATEGORY_BASE = 60
+ID_CATEGORY_BASE = 2100
 ID_MOTION = 4
 ID_SNAPPING = 5
 ID_SEP2 = 6
@@ -223,8 +228,8 @@ def render_number_icon(state: MouseState | None, connected: bool, size: int = IC
     ctx.set_source_rgba(*accent, 0.95)
     ctx.stroke()
 
-    size = 36.0 if len(value) <= 2 else 26.0
-    _text(ctx, value, 32.0, 33.0, size, (1, 1, 1), (0.02, 0.03, 0.05), 1.6)
+    font_size = 36.0 if len(value) <= 2 else 26.0
+    _text(ctx, value, 32.0, 33.0, font_size, (1, 1, 1), (0.02, 0.03, 0.05), 1.6)
     if charging:
         _charging_bolt(ctx, 52.0, 51.0, 8.0)
     return _argb_pixmap(surface)
@@ -388,7 +393,8 @@ class Tray(dbus.service.Object):
             watcher.RegisterStatusNotifierItem(
                 self.bus_name.get_name(), dbus_interface=WATCHER
             )
-        except dbus.DBusException:
+        except dbus.DBusException as exc:
+            logger.warning("StatusNotifier watcher unavailable: %s", exc)
             return False
         return True
 
@@ -427,8 +433,8 @@ class Tray(dbus.service.Object):
             watcher.RegisterStatusNotifierItem(
                 self.bus_name.get_name(), dbus_interface=WATCHER
             )
-        except dbus.DBusException:
-            pass
+        except dbus.DBusException as exc:
+            logger.warning("Could not re-register tray category: %s", exc)
         self.menu.refresh()
 
     def set_style(self, style: str) -> None:
@@ -677,8 +683,8 @@ class TrayMenu(dbus.service.Object):
         self.tray.revision += 1
         try:
             self.LayoutUpdated(dbus.UInt32(self.tray.revision), dbus.Int32(0))
-        except dbus.DBusException:
-            pass
+        except dbus.DBusException as exc:
+            logger.debug("Could not emit LayoutUpdated: %s", exc)
 
     # -- DBusMenu API ------------------------------------------------------
     @dbus.service.method(MENU_IFACE, in_signature="iias", out_signature="u(ia{sv}av)")
@@ -733,10 +739,10 @@ class TrayMenu(dbus.service.Object):
         elif ID_POLLING_BASE <= item_id < ID_POLLING_BASE + len(self.tray.polling_rates):
             hz = self.tray.polling_rates[item_id - ID_POLLING_BASE]
             self.tray.on_polling(hz)
-        elif ID_DPI_BASE <= item_id < ID_DPI_BASE + 8:
+        elif ID_DPI_BASE <= item_id:
             levels = [v for v in (self.tray.state.cpi_levels if self.tray.state else []) if v]
             index = item_id - ID_DPI_BASE
-            if index < len(levels):
+            if 0 <= index < len(levels):
                 self.tray.on_cpi(levels[index])
 
     @dbus.service.method(MENU_IFACE, in_signature="i", out_signature="b")
@@ -772,11 +778,11 @@ class TrayMenu(dbus.service.Object):
         )
 
     @dbus.service.signal(MENU_IFACE, signature="ui")
-    def LayoutUpdated(self, revision: int, parent: int) -> ...:
+    def LayoutUpdated(self, revision: int, parent: int) -> None:
         ...
 
     @dbus.service.signal(MENU_IFACE, signature="a(ia{sv})a(ias)")
-    def ItemsPropertiesUpdated(self, updated, removed) -> ...:
+    def ItemsPropertiesUpdated(self, updated, removed) -> None:
         ...
 
 

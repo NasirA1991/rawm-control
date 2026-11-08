@@ -76,7 +76,7 @@ def _uevent(path: str | Path) -> dict[str, str]:
     return out
 
 
-def _descriptor_hex(path: str) -> str:
+def _descriptor_hex(path: str | Path) -> str:
     try:
         data = Path(path).read_bytes()
     except OSError:
@@ -85,7 +85,7 @@ def _descriptor_hex(path: str) -> str:
     return "\n".join(chunks)
 
 
-def _hid_details(hidraw_path: str) -> dict[str, Any]:
+def _hid_details(hidraw_path: str | Path) -> dict[str, Any]:
     name = Path(hidraw_path).name
     base = Path("/sys/class/hidraw") / name
     descriptor = _descriptor_hex(base / "device" / "report_descriptor")

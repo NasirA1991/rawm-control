@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import copy
+import logging
 import os
 import threading
 import time
 from typing import Callable
+
+logger = logging.getLogger(__name__)
 
 from . import devices, protocol
 from .protocol import (
@@ -159,14 +162,14 @@ class DeviceWorker:
         try:
             self.on_state(snapshot, changed or set())
         except Exception:  # a UI callback must never kill the worker
-            pass
+            logger.exception("State callback failed")
 
     def _emit_link(self, connected: bool, error: str | None = None) -> None:
         self._connected = connected
         try:
             self.on_link(connected, error)
         except Exception:
-            pass
+            logger.exception("Link callback failed")
 
     def _emit_write(self, ok: bool, message: str) -> None:
         if self.on_write is None:
@@ -174,7 +177,7 @@ class DeviceWorker:
         try:
             self.on_write(ok, message)
         except Exception:
-            pass
+            logger.exception("Write callback failed")
 
     def _pick_device(self):
         """Prefer a directly-connected mouse over a receiver dongle."""
@@ -212,7 +215,7 @@ class DeviceWorker:
 
         caps = devices.for_product(info.product_id)
         state = None
-        frames = []
+        frames: list[Frame] = []
         last_error: str | None = None
 
         if caps.receiver:
@@ -482,6 +485,7 @@ class DeviceWorker:
             try:
                 self._loop_connected()
             except Exception as exc:  # never let a firmware quirk kill the worker
+                logger.exception("Worker loop failed; reconnecting")
                 self._disconnect(f"worker error: {exc}")
                 self._stop.wait(1.0)
                 continue

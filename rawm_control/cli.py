@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
+import os
 import sys
 import time
 
@@ -128,9 +130,9 @@ def _parse_bool(value: str) -> bool:
     return value.lower() in ("1", "on", "true", "yes", "enable", "enabled")
 
 
-def build_parser() -> argparse.ArgumentParser:
+def build_parser(prog: str = "rawm-control") -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="rawm-control",
+        prog=prog,
         description="Control RAWM mice over their vendor HID interface.",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {config.VERSION}")
@@ -180,8 +182,18 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def run(argv: list[str]) -> int:
-    parser = build_parser()
+def main(argv: list[str] | None = None) -> int:
+    """Entry point for rawmctl; never imports GTK/Adw."""
+    logging.basicConfig(level=os.environ.get("RAWM_CONTROL_LOG", "WARNING"))
+    args = list(sys.argv[1:] if argv is None else argv)
+    if args and args[0] in ("help", "-h", "--help"):
+        build_parser(prog="rawmctl").print_help()
+        return 0
+    return run(args, prog="rawmctl")
+
+
+def run(argv: list[str], prog: str = "rawm-control") -> int:
+    parser = build_parser(prog=prog)
     args = parser.parse_args(argv)
     command = args.command or "status"
 
@@ -292,7 +304,7 @@ def run(argv: list[str]) -> int:
                 value = 1 if args.value == "on" else 0
                 _apply_changes(dev, state, **{attr: value})
                 new = _verify(dev)
-                if new and getattr(new, attr) == getattr(state, attr):
+                if new and getattr(new, attr) == value:
                     print(f"{command}: {args.value}")
                     return 0
                 print("device did not confirm the change", file=sys.stderr)
@@ -326,10 +338,16 @@ def run(argv: list[str]) -> int:
                 return 2
 
             if command == "power":
-                modes = caps.power_modes or ["Office", "LP", "HP", "Gaming+"]
+                modes = caps.power_modes
                 if args.value is None:
-                    print(modes[state.power_mode] if state.power_mode < len(modes) else state.power_mode)
+                    if modes and 0 <= state.power_mode < len(modes):
+                        print(modes[state.power_mode])
+                    else:
+                        print("not mapped for this model")
                     return 0
+                if not modes:
+                    print("Power mode is not mapped for this model.", file=sys.stderr)
+                    return 2
                 value = args.value
                 if value.isdigit():
                     index = int(value)

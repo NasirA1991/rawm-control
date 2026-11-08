@@ -4,6 +4,15 @@ Bug reports, device reports and pull requests are welcome.
 
 ## Tests
 
+Install the same system test dependencies CI uses (Debian/Ubuntu naming):
+
+```bash
+sudo apt install python3-dbus python3-cairo python3-gi \
+  gir1.2-gtk-4.0 gir1.2-adw-1 libgtk-4-1 libadwaita-1-0
+```
+
+Then run:
+
 ```bash
 python3 -m unittest discover -s tests -v
 RAWM_HW_TEST=1 python3 -m unittest tests.test_hardware -v

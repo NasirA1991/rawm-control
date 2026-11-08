@@ -138,7 +138,7 @@ class BatteryGauge(Gtk.Overlay):
                     Gtk.AccessibleProperty.VALUE_NOW,
                     Gtk.AccessibleProperty.VALUE_TEXT,
                 ],
-                [label, 0, 100, value, label],
+                [label, 0.0, 100.0, float(value), label],
             )
         except (AttributeError, TypeError):
             pass
@@ -784,9 +784,11 @@ class MainWindow(Adw.ApplicationWindow):
         else:
             self.row_surface.set_visible(False)
 
-        modes = caps.power_modes or ["Office", "LP", "HP", "Gaming+"]
-        _set_combo_labels(self.row_power_combo, modes)
-        self.row_power_combo.set_selected(max(0, min(len(modes) - 1, state.power_mode)))
+        modes = caps.power_modes
+        self.row_power_combo.set_visible(bool(modes))
+        if modes:
+            _set_combo_labels(self.row_power_combo, modes)
+            self.row_power_combo.set_selected(max(0, min(len(modes) - 1, state.power_mode)))
         self.row_sleep.set_value(max(1, min(30, round(state.sleep_time / 60) or 1)))
         wireless = not state.wired
         self.group_wireless.set_visible(wireless)
@@ -869,10 +871,10 @@ class MainWindow(Adw.ApplicationWindow):
         return self._current_caps().polling_label(hz)
 
     def _power_text(self, state: MouseState, caps) -> str:
-        modes = caps.power_modes or ["Office", "LP", "HP", "Gaming+"]
-        if 0 <= state.power_mode < len(modes):
+        modes = caps.power_modes
+        if modes and 0 <= state.power_mode < len(modes):
             return modes[state.power_mode]
-        return str(state.power_mode)
+        return "Not mapped for this model"
 
     def _schedule_write(self) -> None:
         if self._edit_timer:
@@ -1024,6 +1026,14 @@ class MainWindow(Adw.ApplicationWindow):
             return
         modes = self._current_caps().power_modes
         index = row.get_selected()
+        if not modes:
+            # The row is hidden for unmapped models; restore any programmatic change.
+            self._loading = True
+            try:
+                row.set_selected(max(0, min(3, self._state.power_mode)))
+            finally:
+                self._loading = False
+            return
         if 0 <= index < len(modes) and index != self._state.power_mode:
             self._state.power_mode = index
             self._loading = True

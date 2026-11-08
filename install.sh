@@ -51,7 +51,14 @@ from rawm_control.app import main
 sys.exit(main())
 LAUNCHER
 chmod 0755 "$BINDIR/rawm-control"
-ln -sf rawm-control "$BINDIR/rawmctl" 2>/dev/null || cp "$BINDIR/rawm-control" "$BINDIR/rawmctl"
+cat > "$BINDIR/rawmctl" <<LAUNCHER
+#!/usr/bin/env python3
+import sys
+sys.path.insert(0, "${PREFIX}/lib/rawm-control")
+from rawm_control.cli import main
+sys.exit(main())
+LAUNCHER
+chmod 0755 "$BINDIR/rawmctl"
 
 install -m0644 data/icons/hicolor/scalable/apps/rawm-control.svg "$ICONDIR/scalable/apps/"
 install -d "$ICONDIR/256x256/apps"
