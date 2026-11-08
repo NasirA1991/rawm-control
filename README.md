@@ -139,6 +139,7 @@ python3 -m rawm_control     # run from the checkout
 sudo ./install.sh           # /usr, including the udev rule
 # or:
 ./install.sh --user         # ~/.local, no root (udev rule separate)
+./uninstall.sh --user       # remove that per-user install
 ```
 
 Or build a local Arch package with `makepkg -si`.
@@ -177,6 +178,9 @@ Closing the window keeps the app in the tray. **Quit** from the tray menu or
 press `Ctrl+Q` to exit.
 
 ### CLI
+
+`rawmctl` is a standalone entry point and does not import GTK/libadwaita, so it
+works over SSH or on a headless machine with only the HID dependencies installed.
 
 ```bash
 rawmctl status

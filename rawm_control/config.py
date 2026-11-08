@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 APP_ID = "io.github.rawmcontrol.RawmControl"
 APP_NAME = "RAWM Control"
@@ -49,19 +52,23 @@ DEFAULTS = {
 
 def load() -> dict:
     data = dict(DEFAULTS)
+    path = config_path()
     try:
-        data.update(json.loads(config_path().read_text(encoding="utf-8")))
-    except (OSError, ValueError):
+        data.update(json.loads(path.read_text(encoding="utf-8")))
+    except FileNotFoundError:
         pass
+    except (OSError, ValueError) as exc:
+        logger.warning("Could not read preferences from %s: %s", path, exc)
     return data
 
 
 def save(data: dict) -> None:
+    path = config_path()
     try:
         config_dir().mkdir(parents=True, exist_ok=True)
-        config_path().write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-    except OSError:
-        pass
+        path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    except OSError as exc:
+        logger.warning("Could not save preferences to %s: %s", path, exc)
 
 
 def mark_close_hint_shown() -> bool:

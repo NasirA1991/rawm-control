@@ -6,6 +6,7 @@ import unittest
 
 from gi.repository import GLib
 
+from rawm_control import devices
 from rawm_control.protocol import MouseState
 from rawm_control.ui import MainWindow, _set_combo_labels
 
@@ -44,6 +45,14 @@ class UiHelperTest(unittest.TestCase):
         combo = FakeCombo(["1000 Hz"])
         _set_combo_labels(combo, ["1000 Hz", "2000 Hz"])
         self.assertEqual(combo.replaced, 1)
+
+    def test_unmapped_power_is_labelled_honestly(self):
+        window = MainWindow.__new__(MainWindow)
+        caps = devices.for_product(0x2328)
+        self.assertEqual(
+            window._power_text(MouseState(product_id=0x2328), caps),
+            "Not mapped for this model",
+        )
 
     def test_edit_debounce_writes_once(self):
         window = MainWindow.__new__(MainWindow)

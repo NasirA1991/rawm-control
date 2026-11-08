@@ -18,7 +18,7 @@ jobs:
     if: ${{ vars.AUR_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Render PKGBUILD
         run: |
@@ -27,7 +27,7 @@ jobs:
             > packaging/aur/rawm-control-git/PKGBUILD
 
       - name: Publish rawm-control-git
-        uses: KSXGitHub/github-actions-deploy-aur@v4.2.0
+        uses: KSXGitHub/github-actions-deploy-aur@084b0d9b15415bf9cdb65d44dad1efe37a354050 # v4.2.0
         with:
           pkgname: rawm-control-git
           pkgbuild: packaging/aur/rawm-control-git/PKGBUILD

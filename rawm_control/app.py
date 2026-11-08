@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .tray import Tray
 
 import gi
 
@@ -93,7 +98,7 @@ class RawmApplication(Adw.Application):
                 self.hold()
                 self._held = True
         except Exception as exc:  # tray is optional
-            print(f"rawm-control: tray unavailable: {exc}", file=sys.stderr)
+            logging.getLogger(__name__).warning("Tray unavailable: %s", exc)
 
     def _install_icon_path(self) -> None:
         display = Gdk.Display.get_default()
@@ -400,6 +405,7 @@ class RawmApplication(Adw.Application):
 
 
 def main(argv: list[str] | None = None) -> int:
+    logging.basicConfig(level=os.environ.get("RAWM_CONTROL_LOG", "WARNING"))
     argv = list(sys.argv if argv is None else argv)
     args = argv[1:]
     start_hidden = "--tray" in args or "--minimized" in args
@@ -417,11 +423,15 @@ def main(argv: list[str] | None = None) -> int:
         return cli.run(args[1:])
     if args and args[0] in cli.CLI_COMMANDS:
         return cli.run(args)
-    if args and args[0] in ("-h", "--help"):
+    if args and args[0] in ("help", "-h", "--help"):
         print("Usage: rawm-control [--tray|--no-tray] [--demo] [--page PAGE] [--cli <command>]")
         print("       rawm-control <status|scan|caps|report|polling|motion-sync|dpi|lod|power|sleep> ...\n")
         cli.build_parser().print_help()
         return 0
+    if args and not args[0].startswith("-"):
+        print(f"rawm-control: unknown command {args[0]!r}", file=sys.stderr)
+        print("Try 'rawm-control --help' or 'rawmctl --help'.", file=sys.stderr)
+        return 2
 
     app = RawmApplication(
         start_hidden=start_hidden,

@@ -23,7 +23,7 @@ dependencies = []
 
 [project.scripts]
 rawm-control = "rawm_control.app:main"
-rawmctl = "rawm_control.app:main"
+rawmctl = "rawm_control.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/NasirA1991/rawm-control"

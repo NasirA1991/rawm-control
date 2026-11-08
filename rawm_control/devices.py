@@ -231,7 +231,9 @@ def validate_patch(state: MouseState, patch: dict) -> str | None:
                 return "invalid CPI"
             if not caps.cpi_range[0] <= cpi <= caps.cpi_range[1]:
                 return f"CPI {cpi} is outside this model's range"
-        if key == "power_mode" and caps.power_modes:
+        if key == "power_mode":
+            if not caps.power_modes:
+                return "power mode is not mapped for this model"
             try:
                 mode = int(value)
             except (TypeError, ValueError):

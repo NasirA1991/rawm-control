@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import io
 import unittest
+from contextlib import redirect_stderr
 from unittest.mock import patch
 
+from rawm_control import app as app_module
 from rawm_control.app import RawmApplication
 from rawm_control.protocol import MouseState
 
@@ -71,6 +74,11 @@ class AppActivationTest(unittest.TestCase):
 
         self.assertEqual(notifications, [])
         mark.assert_not_called()
+
+    def test_unknown_gui_subcommand_is_rejected_without_starting_gtk(self):
+        with redirect_stderr(io.StringIO()) as err:
+            self.assertEqual(app_module.main(["rawm-control", "definitely-not-a-command"]), 2)
+        self.assertIn("unknown command", err.getvalue())
 
     def test_second_activation_reveals_hidden_tray_instance(self):
         app = self.make_app()

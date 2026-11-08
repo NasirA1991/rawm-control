@@ -1,15 +1,26 @@
 #!/usr/bin/env bash
-# Remove a manual/system-wide RAWM Control install.
-#   sudo ./uninstall.sh
+# Remove a manual RAWM Control install.
+#   sudo ./uninstall.sh          # system-wide (/usr)
+#   ./uninstall.sh --user        # per-user (~/.local)
 # User settings in ~/.config/rawm-control are kept.
 set -euo pipefail
 
-if [[ ${EUID} -ne 0 ]]; then
-    echo "Run with sudo: sudo ./uninstall.sh" >&2
-    exit 1
+USER_MODE=0
+if [[ "${1:-}" == "--user" ]]; then
+    USER_MODE=1
+    if [[ ${EUID} -eq 0 ]]; then
+        echo "Run --user without sudo." >&2
+        exit 1
+    fi
+    PREFIX="${HOME}/.local"
+else
+    if [[ ${EUID} -ne 0 ]]; then
+        echo "Run with sudo, or use ./uninstall.sh --user." >&2
+        exit 1
+    fi
+    PREFIX="${PREFIX:-/usr}"
 fi
 
-PREFIX="${PREFIX:-/usr}"
 LIBDIR="$PREFIX/lib/rawm-control"
 BINDIR="$PREFIX/bin"
 APPDIR="$PREFIX/share/applications"
@@ -24,6 +35,15 @@ rm -f "$METADIR/io.github.rawmcontrol.RawmControl.metainfo.xml"
 rm -f "$ICONDIR/scalable/apps/rawm-control.svg"
 rm -f "$ICONDIR"/scalable/actions/rawm-*-symbolic.svg
 rm -f "$ICONDIR/256x256/apps/rawm-control.png"
+
+if [[ ${USER_MODE} -eq 1 ]]; then
+    command -v update-desktop-database >/dev/null && update-desktop-database "$APPDIR" >/dev/null 2>&1 || true
+    command -v gtk-update-icon-cache >/dev/null && gtk-update-icon-cache -q -t "$ICONDIR" >/dev/null 2>&1 || true
+    echo "RAWM Control user install removed."
+    echo "Kept user settings in ~/.config/rawm-control."
+    exit 0
+fi
+
 rm -f "$UDEVDIR/71-rawm-hid.rules"
 
 # Files from an optional per-user install.
@@ -36,7 +56,6 @@ if [[ -n "${SUDO_USER:-}" ]]; then
     rm -f "$HOME_DIR/.local/share/icons/hicolor/scalable/apps/rawm-control.svg"
     rm -f "$HOME_DIR"/.local/share/icons/hicolor/scalable/actions/rawm-*-symbolic.svg
     rm -f "$HOME_DIR/.local/share/icons/hicolor/256x256/apps/rawm-control.png"
-    rm -f "$HOME_DIR/.local/share/metainfo/io.github.rawmcontrol.RawmControl.metainfo.xml"
     if command -v update-desktop-database >/dev/null; then
         sudo -u "$SUDO_USER" update-desktop-database "$HOME_DIR/.local/share/applications" >/dev/null 2>&1 || true
     fi

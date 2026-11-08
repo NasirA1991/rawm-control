@@ -37,7 +37,9 @@ modules:
       - cp -r rawm_control data /app/share/rawm-control/
       - find /app/share/rawm-control -name __pycache__ -type d -prune -exec rm -rf {} +
       - install -Dm755 packaging/flatpak/rawm-control.sh /app/bin/rawm-control
+      - install -Dm755 packaging/flatpak/rawmctl.sh /app/bin/rawmctl
       - install -Dm644 packaging/flatpak/launcher.py /app/share/rawm-control/launcher.py
+      - install -Dm644 packaging/flatpak/rawmctl.py /app/share/rawm-control/rawmctl.py
       - install -Dm644 data/io.github.rawmcontrol.RawmControl.desktop /app/share/applications/io.github.rawmcontrol.RawmControl.desktop
       - sed -i 's/^Icon=.*/Icon=io.github.rawmcontrol.RawmControl/' /app/share/applications/io.github.rawmcontrol.RawmControl.desktop
       - install -Dm644 data/io.github.rawmcontrol.RawmControl.metainfo.xml /app/share/metainfo/io.github.rawmcontrol.RawmControl.metainfo.xml
