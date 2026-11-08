@@ -138,7 +138,7 @@ class BatteryGauge(Gtk.Overlay):
                     Gtk.AccessibleProperty.VALUE_NOW,
                     Gtk.AccessibleProperty.VALUE_TEXT,
                 ],
-                [label, 0, 100, value, label],
+                [label, 0.0, 100.0, float(value), label],
             )
         except (AttributeError, TypeError):
             pass
