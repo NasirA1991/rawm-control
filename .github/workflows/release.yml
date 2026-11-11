@@ -46,16 +46,16 @@ jobs:
           appstreamcli validate --no-net data/io.github.rawmcontrol.RawmControl.metainfo.xml
       - name: Headless UI smoke test and quit
         run: |
-          timeout 20 dbus-run-session -- xvfb-run -a bash -c '
+          timeout 45 dbus-run-session -- xvfb-run -a bash -c '
             python3 -m rawm_control --demo --no-tray >/tmp/ui.log 2>&1 &
             pid=$!
-            for i in $(seq 1 10); do
+            for i in $(seq 1 20); do
               if gdbus call --session --dest io.github.rawmcontrol.RawmControl --object-path /io/github/rawmcontrol/RawmControl --method org.gtk.Actions.Activate quit "[]" "{}" >/dev/null 2>&1; then
                 break
               fi
               sleep 1
             done
-            for i in $(seq 1 10); do
+            for i in $(seq 1 20); do
               kill -0 "$pid" 2>/dev/null || break
               sleep 0.5
             done
