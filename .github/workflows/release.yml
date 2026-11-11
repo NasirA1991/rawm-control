@@ -10,15 +10,69 @@ on:
         required: true
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
-  source:
+  test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - name: Install test dependencies
+        run: |
+          # Pin Ubuntu mirror IPs: GitHub-hosted runner DNS has intermittently failed.
+          printf '%s\n' \
+            "51.12.153.52 azure.archive.ubuntu.com" \
+            "91.189.91.83 archive.ubuntu.com" \
+            "185.125.190.81 security.ubuntu.com" | sudo tee -a /etc/hosts >/dev/null
+          timeout 300 sudo apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=3 update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            python3-dbus python3-cairo python3-gi \
+            gir1.2-gtk-4.0 gir1.2-adw-1 libgtk-4-1 libadwaita-1-0 \
+            xvfb dbus-x11 desktop-file-utils appstream
+      - name: Unit tests
+        run: python3 -m unittest discover -s tests -v
+      - name: Byte-compile
+        run: python3 -m compileall -q rawm_control
+      - name: Validate desktop and AppStream metadata
+        run: |
+          desktop-file-validate data/io.github.rawmcontrol.RawmControl.desktop
+          appstreamcli validate --no-net data/io.github.rawmcontrol.RawmControl.metainfo.xml
+      - name: Headless UI smoke test and quit
+        run: |
+          timeout 20 dbus-run-session -- xvfb-run -a bash -c '
+            python3 -m rawm_control --demo --no-tray >/tmp/ui.log 2>&1 &
+            pid=$!
+            for i in $(seq 1 10); do
+              if gdbus call --session --dest io.github.rawmcontrol.RawmControl --object-path /io/github/rawmcontrol/RawmControl --method org.gtk.Actions.Activate quit "[]" "{}" >/dev/null 2>&1; then
+                break
+              fi
+              sleep 1
+            done
+            for i in $(seq 1 10); do
+              kill -0 "$pid" 2>/dev/null || break
+              sleep 0.5
+            done
+            if kill -0 "$pid" 2>/dev/null; then
+              kill "$pid" 2>/dev/null || true
+              cat /tmp/ui.log
+              echo "UI did not quit cleanly" >&2
+              exit 1
+            fi
+            wait "$pid"
+          '
+          cat /tmp/ui.log
+
+  source:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       version: ${{ steps.version.outputs.version }}
       sha256: ${{ steps.package.outputs.sha256 }}
@@ -58,6 +112,7 @@ jobs:
   appimage:
     needs: source
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -69,19 +124,30 @@ jobs:
           name: appimage
           path: dist/*.AppImage
 
+  # The Flathub runtime download has hung repeatedly on GitHub-hosted runners.
+  # Keep it optional: bounded, non-blocking, and the release still ships the
+  # source tarball and AppImage when Flatpak packaging is unavailable.
   flatpak:
     needs: source
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
       - name: Install Flatpak tooling
+        timeout-minutes: 12
         run: |
-          sudo apt-get update
-          sudo apt-get install -y flatpak flatpak-builder
+          # Pin Ubuntu mirror IPs: GitHub-hosted runner DNS has intermittently failed.
+          printf '%s\n' \
+            "51.12.153.52 azure.archive.ubuntu.com" \
+            "91.189.91.83 archive.ubuntu.com" \
+            "185.125.190.81 security.ubuntu.com" | sudo tee -a /etc/hosts >/dev/null
+          timeout 300 sudo apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=3 update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y flatpak flatpak-builder
           sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-          sudo flatpak install -y --noninteractive flathub org.gnome.Platform//50 org.gnome.Sdk//50
+          timeout 480 sudo flatpak install -y --noninteractive flathub org.gnome.Platform//50 org.gnome.Sdk//50
       - name: Build Flatpak bundle
         run: ./packaging/flatpak/build.sh "${{ needs.source.outputs.version }}" dist
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -91,14 +157,37 @@ jobs:
 
   release:
     needs: [source, appimage, flatpak]
+    # Flatpak is intentionally optional; source and AppImage are mandatory.
+    if: always() && needs.source.result == 'success' && needs.appimage.result == 'success'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           path: dist
           merge-multiple: true
-      - name: List release files
-        run: ls -lh dist
+
+      - name: Generate and verify SHA256SUMS
+        run: |
+          cd dist
+          find . -maxdepth 1 -type f ! -name SHA256SUMS -print0 \
+            | sort -z | xargs -0 sha256sum > SHA256SUMS
+          sha256sum --check SHA256SUMS
+          ls -lh
+
+      - uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
+
+      - name: Sign release artifacts (keyless, GitHub OIDC)
+        run: |
+          cd dist
+          for artifact in *; do
+            [ -f "$artifact" ] || continue
+            cosign sign-blob --yes --bundle "${artifact}.sigstore" "$artifact"
+          done
+
       - name: Create GitHub release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
@@ -110,6 +199,7 @@ jobs:
     needs: [release, source]
     if: vars.AUR_ENABLED == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:

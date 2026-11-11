@@ -6,7 +6,14 @@ import unittest
 
 from unittest.mock import patch
 
-from rawm_control.protocol import CMD_QUERY_RESULT, Frame, HidrawDevice, MouseState
+from rawm_control.protocol import (
+    CMD_NOTIFY,
+    CMD_QUERY_RESULT,
+    NOTIFY_BATTERY,
+    Frame,
+    HidrawDevice,
+    MouseState,
+)
 from rawm_control.worker import DemoWorker, DeviceWorker
 
 
@@ -18,6 +25,7 @@ class FakeDevice:
         self.closed = False
         self.is_open = True
         self.written = []
+        self.locked = False
 
     def query(self, timeout: float = 1.4):
         if self.results:
@@ -26,6 +34,15 @@ class FakeDevice:
 
     def set_state(self, state):
         self.written.append(state)
+
+    def lock_exclusive(self):
+        if self.locked:
+            from rawm_control.protocol import DeviceBusy
+            raise DeviceBusy("busy")
+        self.locked = True
+
+    def unlock(self):
+        self.locked = False
 
     def read_ready(self, timeout: float = 0.0):
         return False
@@ -50,6 +67,29 @@ class WorkerLifecycleTest(unittest.TestCase):
             on_write=lambda ok, message: writes.append((ok, message)),
         )
         return worker, states, links, writes
+
+    def test_disconnect_reports_a_queued_patch_that_was_never_sent(self):
+        worker, _states, _links, writes = self.make_worker()
+        worker._pending_patch = {"cpi": 800}
+        worker._disconnect("test")
+        self.assertIn((False, "Device disconnected before the change was sent"), writes)
+
+    def test_disconnect_clears_a_queued_sleep_and_reports_it(self):
+        worker, _states, _links, writes = self.make_worker()
+        worker._pending_sleep = 300
+        worker._disconnect("test")
+        self.assertIn((False, "Device disconnected before the change was sent"), writes)
+        self.assertIsNone(worker._pending_sleep)
+
+    def test_consume_does_not_mutate_the_previously_published_state(self):
+        worker, states, _links, _writes = self.make_worker()
+        old = MouseState(product_id=0x2338, battery=50)
+        worker._state = old
+        frame = Frame(cmd=CMD_NOTIFY, size=3, subtype=NOTIFY_BATTERY, data=bytes([40, 0]))
+        worker._consume([frame])
+        self.assertEqual(old.battery, 50)
+        self.assertEqual(worker.state.battery, 40)
+        self.assertTrue(states)
 
     def test_receiver_metadata_survives_refresh(self):
         worker, states, _links, _writes = self.make_worker()

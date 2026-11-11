@@ -24,7 +24,7 @@ def _candidates():
     return found
 
 
-def _open() -> tuple[RawmDevice, MouseState]:
+def _open(lock: bool = False) -> tuple[RawmDevice, MouseState]:
     candidates = _candidates()
     if not candidates:
         raise protocol.DeviceNotFound("no RAWM vendor HID collection found")
@@ -53,6 +53,12 @@ def _open() -> tuple[RawmDevice, MouseState]:
             if caps.receiver:
                 state.via_receiver = True
                 state.receiver_product_id = info.product_id
+            if lock:
+                try:
+                    dev.lock_exclusive()
+                except protocol.DeviceBusy:
+                    dev.close()
+                    raise
             return dev, state
         dev.close()
     if receiver_seen:
@@ -61,6 +67,22 @@ def _open() -> tuple[RawmDevice, MouseState]:
             "Turn the mouse on or move it, then retry."
         )
     raise protocol.ProtocolError("The mouse did not answer. Is it awake and paired?")
+
+
+def _needs_lock(command: str, args) -> bool:
+    if command in ("motion-sync", "angle-snapping", "ripple-control"):
+        return args.value is not None
+    if command == "polling":
+        return args.hz is not None
+    if command == "dpi":
+        return args.value is not None
+    if command == "lod":
+        return args.value is not None
+    if command == "power":
+        return args.value is not None
+    if command == "sleep":
+        return args.minutes is not None
+    return False
 
 
 def _verify(dev: RawmDevice) -> MouseState | None:
@@ -94,7 +116,8 @@ def _print_status(state: MouseState) -> None:
     print(f"  sensor        {state.sensor or caps.sensor or 'unknown'}")
     link = state.connection + (" via receiver" if state.via_receiver and not state.wired else "")
     print(f"  connection    {link}" + (" (charging)" if state.charging else ""))
-    print(f"  battery       {state.battery}%")
+    if caps.battery:
+        print(f"  battery       {state.battery}%")
     print(f"  polling       {state.polling_rate} Hz (max {devices.max_polling_rate(state)} Hz)")
     print(f"  dpi           {state.cpi}")
     print(f"  lod           {caps.lod_label(state.lod)}")
@@ -119,6 +142,9 @@ def _raw_json(state: MouseState, include_identifiers: bool = False) -> dict:
         data[key] = value
     data["max_polling_rate"] = devices.max_polling_rate(state)
     data["effective_polling_rates"] = devices.effective_polling_rates(state)
+    if not devices.for_state(state).battery:
+        data["battery"] = None
+        data["battery_levels"] = []
     if not include_identifiers:
         from . import diagnostics
 
@@ -230,15 +256,20 @@ def run(argv: list[str], prog: str = "rawm-control") -> int:
                         finally:
                             dev.close()
                         if state is not None:
+                            battery = (
+                                f"{state.battery}%, "
+                                if devices.for_product(state.product_id).battery
+                                else ""
+                            )
                             print(f"    \u2514\u2500 paired mouse: {state.device_name} ({state.product_id:04x}, "
-                                  f"{state.battery}%, {state.polling_rate} Hz)")
+                                  f"{battery}{state.polling_rate} Hz)")
                         else:
                             print("    \u2514\u2500 paired mouse: not answering (asleep?)")
                     except protocol.ProtocolError:
                         print("    \u2514\u2500 paired mouse: not answering (asleep?)")
             return 0
 
-        dev, state = _open()
+        dev, state = _open(lock=_needs_lock(command, args))
         caps = devices.for_state(state)
         try:
             if command == "status":
@@ -314,7 +345,11 @@ def run(argv: list[str], prog: str = "rawm-control") -> int:
                 if args.value is None:
                     print(state.cpi)
                     return 0
-                value = max(caps.cpi_range[0], min(caps.cpi_range[1], args.value))
+                if not caps.cpi_range[0] <= args.value <= caps.cpi_range[1]:
+                    parser.error(
+                        f"dpi must be between {caps.cpi_range[0]} and {caps.cpi_range[1]}"
+                    )
+                value = args.value
                 _apply_changes(dev, state, cpi=value)
                 new = _verify(dev)
                 if new and new.cpi == value:
@@ -355,6 +390,8 @@ def run(argv: list[str], prog: str = "rawm-control") -> int:
                     matches = [i for i, name in enumerate(modes) if name.lower().startswith(value.lower())]
                     if not matches:
                         parser.error(f"power modes: {', '.join(modes)}")
+                    if len(matches) > 1:
+                        parser.error(f"ambiguous power mode {value!r}: {', '.join(modes)}")
                     index = matches[0]
                 if not 0 <= index < len(modes):
                     parser.error(f"power modes: {', '.join(modes)}")
@@ -370,7 +407,9 @@ def run(argv: list[str], prog: str = "rawm-control") -> int:
                 if args.minutes is None:
                     print(f"{state.sleep_time // 60} min")
                     return 0
-                seconds = max(60, min(1800, args.minutes * 60))
+                if not 1 <= args.minutes <= 30:
+                    parser.error("sleep must be between 1 and 30 minutes")
+                seconds = args.minutes * 60
                 dev.set_sleep_time(seconds, crc=state.crc)
                 time.sleep(0.4)
                 new = _verify(dev)
@@ -390,6 +429,9 @@ def run(argv: list[str], prog: str = "rawm-control") -> int:
     except protocol.DeviceNotFound as exc:
         print(f"No mouse found: {exc}", file=sys.stderr)
         return 1
+    except protocol.DeviceBusy as exc:
+        print(f"Device busy: {exc}", file=sys.stderr)
+        return 2
     except protocol.ProtocolError as exc:
         print(f"Protocol error: {exc}", file=sys.stderr)
         return 2

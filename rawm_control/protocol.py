@@ -23,6 +23,7 @@ encoder functions are pure, while :class:`RawmDevice` owns a hidraw fd.
 from __future__ import annotations
 
 import copy
+import fcntl
 import json
 import os
 import select
@@ -124,6 +125,10 @@ class ProtocolError(Exception):
 
 class DeviceNotFound(ProtocolError):
     pass
+
+
+class DeviceBusy(RuntimeError):
+    """Another process currently owns the write transaction for this mouse."""
 
 
 class PermissionDenied(ProtocolError):
@@ -327,29 +332,29 @@ def state_from_query(doc: dict, base: MouseState | None = None) -> MouseState:
     put("firmware_code", "rc", int)
     put("hardware_code", "hw", int)
     put("sensor", "sst", str)
-    put("battery", "battery", int)
+    put("battery", "battery", lambda v: max(0, min(100, int(v))))
     put("charging", "chr", lambda v: bool(v))
     put("wired", "wired", lambda v: bool(v))
-    put("cpi", "cpi", int)
-    put("polling_rate", "polling", int)
-    put("light", "light", int)
-    put("lod", "lod", int)
-    put("power_mode", "pm", int)
-    put("motion_sync", "ms", int)
-    put("angle_tuning", "at", lambda v: (int(v) << 24) >> 24)  # signed int8
-    put("angle_snapping", "as", int)
-    put("ripple_control", "rctrl", int)
-    put("sleep_time", "st", int)
-    put("tx_output_power", "top", int)
-    put("auto_tx_power", "atp", int)
-    put("onboard", "ob", int)
-    put("onboard_count", "ocn", int)
-    put("config_num", "cn", int)
-    put("enhanced_cpi", "ec", lambda v: bool(v))
-    put("crc", "crc", lambda v: bool(v))
+    put("cpi", "cpi", lambda v: max(0, min(30000, int(v))))
+    put("polling_rate", "polling", lambda v: max(0, min(8000, int(v))))
+    put("light", "light", lambda v: int(v) & 0xFF)
+    put("lod", "lod", lambda v: max(0, min(3, int(v))))
+    put("power_mode", "pm", lambda v: max(0, min(3, int(v))))
+    put("motion_sync", "ms", lambda v: 1 if int(v) else 0)
+    put("angle_tuning", "at", lambda v: max(-30, min(30, (int(v) << 24) >> 24)))
+    put("angle_snapping", "as", lambda v: 1 if int(v) else 0)
+    put("ripple_control", "rctrl", lambda v: 1 if int(v) else 0)
+    put("sleep_time", "st", lambda v: max(0, min(1800, int(v))))
+    put("tx_output_power", "top", lambda v: max(0, min(255, int(v))))
+    put("auto_tx_power", "atp", lambda v: max(0, min(255, int(v))))
+    put("onboard", "ob", lambda v: max(0, min(255, int(v))))
+    put("onboard_count", "ocn", lambda v: max(0, min(16, int(v))))
+    put("config_num", "cn", lambda v: max(0, min(255, int(v))))
+    put("enhanced_cpi", "ec", lambda v: 1 if v else 0)
+    put("crc", "crc", lambda v: 1 if v else 0)
     put("mac_address", "addr", str)
     put("esb_address", "esb_addr", str)
-    put("rf_channel", "rf_ch", int)
+    put("rf_channel", "rf_ch", lambda v: max(0, min(255, int(v))))
     put("glass_mode", "gm", lambda v: int(v[0]) if isinstance(v, list) else int(v))
     put("glass_mode_enabled", "gm", lambda v: int(v[1]) if isinstance(v, list) else 1)
     put("hop_channel", "hc", lambda v: int(v) != 0xFF)
@@ -367,16 +372,17 @@ def state_from_query(doc: dict, base: MouseState | None = None) -> MouseState:
 
     cpi_levels = int_list("cpi_l", 8)
     if cpi_levels is not None:
+        cpi_levels = [max(0, min(30000, x)) for x in cpi_levels]
         st.cpi_levels = cpi_levels + [0] * max(0, 8 - len(cpi_levels))
     colors = int_list("cpi_l_c", 8)
     if colors is not None:
         st.cpi_level_colors = [x & LED_RGB_MASK for x in colors] + [0] * max(0, 8 - len(colors))
     delays = int_list("kd", 32)
     if delays is not None:
-        st.key_delay = delays
+        st.key_delay = [max(0, min(255, x)) for x in delays]
     onboard = int_list("ocs", 32)
     if onboard is not None:
-        st.onboard_status = onboard
+        st.onboard_status = [max(0, min(255, x)) for x in onboard]
     return st
 
 
@@ -568,6 +574,7 @@ class RawmDevice:
         self.fd = -1
         self.stream = FrameStream()
         self.last_error: str | None = None
+        self._locked = False
 
     # -- lifecycle ---------------------------------------------------------
     def open(self) -> None:
@@ -585,11 +592,44 @@ class RawmDevice:
 
     def close(self) -> None:
         if self.fd >= 0:
+            self.unlock()
             try:
                 os.close(self.fd)
             except OSError:
                 pass
             self.fd = -1
+
+    def lock_exclusive(self) -> None:
+        """Serialize read-modify-write transactions across processes.
+
+        The lock lives on the hidraw inode, so the GUI, ``rawmctl`` and any
+        other instance using the same device see it.  It is non-blocking: a
+        contended writer gets a clear error instead of silently losing an
+        update or waiting behind a hung query.
+        """
+        if self.fd < 0:
+            raise ProtocolError("device is not open")
+        if self._locked:
+            return
+        try:
+            fcntl.flock(self.fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise DeviceBusy(
+                "Another RAWM Control instance (or rawmctl) is configuring this mouse."
+            ) from exc
+        self._locked = True
+
+    def unlock(self) -> None:
+        if self.fd < 0 or not self._locked:
+            return
+        try:
+            fcntl.flock(self.fd, fcntl.LOCK_UN)
+        except OSError:
+            # Closing the fd releases the lock anyway; never let cleanup
+            # prevent the device from being closed.
+            pass
+        finally:
+            self._locked = False
 
     @property
     def is_open(self) -> bool:
@@ -733,7 +773,7 @@ def apply_notifications(state: MouseState, frames: Iterable[Frame]) -> tuple[Mou
         data = frame.data
         sub = frame.subtype
         if sub == NOTIFY_BATTERY and len(data) >= 1:
-            new_battery = data[0]
+            new_battery = max(0, min(100, data[0]))
             if new_battery != state.battery:
                 state.battery = new_battery
                 changed.add("battery")
@@ -742,7 +782,7 @@ def apply_notifications(state: MouseState, frames: Iterable[Frame]) -> tuple[Mou
                 state.charging = new_charging
                 changed.add("charging")
         elif sub == NOTIFY_POLLING and len(data) >= 2:
-            value = data[0] | (data[1] << 8)
+            value = max(0, min(8000, data[0] | (data[1] << 8)))
             if value != state.polling_rate:
                 state.polling_rate = value
                 changed.add("polling_rate")
@@ -751,6 +791,7 @@ def apply_notifications(state: MouseState, frames: Iterable[Frame]) -> tuple[Mou
                 value = data[0] | (data[1] << 8)
                 if len(data) >= 4:
                     value |= (data[2] << 16) | (data[3] << 24)
+                value = max(0, min(30000, value))
                 if value != state.cpi:
                     state.cpi = value
                     changed.add("cpi")
@@ -759,47 +800,56 @@ def apply_notifications(state: MouseState, frames: Iterable[Frame]) -> tuple[Mou
                 state.surface_quality = data[0]
                 changed.add("surface_quality")
         elif sub == NOTIFY_LOD and data:
-            if state.lod != data[0]:
-                state.lod = data[0]
+            value = max(0, min(3, data[0]))
+            if state.lod != value:
+                state.lod = value
                 changed.add("lod")
         elif sub == NOTIFY_POWER_MODE and data:
-            if state.power_mode != data[0]:
-                state.power_mode = data[0]
+            value = max(0, min(3, data[0]))
+            if state.power_mode != value:
+                state.power_mode = value
                 changed.add("power_mode")
         elif sub == NOTIFY_MOTION_SYNC and data:
-            if state.motion_sync != data[0]:
-                state.motion_sync = data[0]
+            value = 1 if data[0] else 0
+            if state.motion_sync != value:
+                state.motion_sync = value
                 changed.add("motion_sync")
         elif sub == NOTIFY_ANGLE_TUNING and data:
-            value = (data[0] << 24) >> 24
+            value = max(-30, min(30, (data[0] << 24) >> 24))
             if state.angle_tuning != value:
                 state.angle_tuning = value
                 changed.add("angle_tuning")
         elif sub == NOTIFY_ANGLE_SNAPPING and data:
-            if state.angle_snapping != data[0]:
-                state.angle_snapping = data[0]
+            value = 1 if data[0] else 0
+            if state.angle_snapping != value:
+                state.angle_snapping = value
                 changed.add("angle_snapping")
         elif sub == NOTIFY_RIPPLE_CONTROL and data:
-            if state.ripple_control != data[0]:
-                state.ripple_control = data[0]
+            value = 1 if data[0] else 0
+            if state.ripple_control != value:
+                state.ripple_control = value
                 changed.add("ripple_control")
         elif sub == NOTIFY_LIGHT and data:
             if state.light != data[0]:
                 state.light = data[0]
                 changed.add("light")
         elif sub == NOTIFY_KEY_DELAY:
-            delays = list(data)
-            if state.key_delay != delays:
+            delays = [max(0, min(255, x)) for x in list(data[:32])]
+            if delays and state.key_delay != delays:
                 state.key_delay = delays
                 changed.add("key_delay")
         elif sub == NOTIFY_SLEEP_TIME and len(data) >= 2:
-            value = data[0] | (data[1] << 8)
+            value = max(0, min(1800, data[0] | (data[1] << 8)))
             if state.sleep_time != value:
                 state.sleep_time = value
                 changed.add("sleep_time")
         elif sub == NOTIFY_BATTERY_LEVELS and len(data) >= 2:
-            levels = [data[i] | (data[i + 1] << 8) for i in range(0, len(data) - 1, 2)]
-            if levels and levels != state.battery_levels:
+            levels = [data[i] | (data[i + 1] << 8) for i in range(0, len(data) - 1, 2)][:16]
+            if (
+                2 <= len(levels) <= 16
+                and all(2500 <= mv <= 5000 for mv in levels)
+                and levels != state.battery_levels
+            ):
                 state.battery_levels = levels
                 changed.add("battery_levels")
         elif sub == NOTIFY_RSSI and data:
@@ -808,7 +858,7 @@ def apply_notifications(state: MouseState, frames: Iterable[Frame]) -> tuple[Mou
                 state.rssi = value
                 changed.add("rssi")
         elif sub == NOTIFY_ONBOARD_STATUS:
-            statuses = list(data)
+            statuses = [max(0, min(255, x)) for x in list(data[:32])]
             if statuses and statuses != state.onboard_status:
                 state.onboard_status = statuses
                 changed.add("onboard_status")

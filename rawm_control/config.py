@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 APP_ID = "io.github.rawmcontrol.RawmControl"
 APP_NAME = "RAWM Control"
-VERSION = "0.1.14"
+VERSION = "0.1.15"
 
 
 def config_dir() -> Path:
