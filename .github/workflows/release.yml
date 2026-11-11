@@ -26,8 +26,8 @@ jobs:
           ref: ${{ github.event.inputs.tag || github.ref }}
       - name: Install test dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
+          timeout 300 sudo apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=3 update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
             python3-dbus python3-cairo python3-gi \
             gir1.2-gtk-4.0 gir1.2-adw-1 libgtk-4-1 libadwaita-1-0 \
             xvfb dbus-x11 desktop-file-utils appstream
@@ -134,8 +134,8 @@ jobs:
       - name: Install Flatpak tooling
         timeout-minutes: 12
         run: |
-          sudo apt-get update
-          sudo apt-get install -y flatpak flatpak-builder
+          timeout 300 sudo apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=3 update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y flatpak flatpak-builder
           sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
           timeout 480 sudo flatpak install -y --noninteractive flathub org.gnome.Platform//50 org.gnome.Sdk//50
       - name: Build Flatpak bundle
