@@ -26,6 +26,11 @@ jobs:
           ref: ${{ github.event.inputs.tag || github.ref }}
       - name: Install test dependencies
         run: |
+          # Pin Ubuntu mirror IPs: GitHub-hosted runner DNS has intermittently failed.
+          printf '%s\n' \
+            "51.12.153.52 azure.archive.ubuntu.com" \
+            "91.189.91.83 archive.ubuntu.com" \
+            "185.125.190.81 security.ubuntu.com" | sudo tee -a /etc/hosts >/dev/null
           timeout 300 sudo apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=3 update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
             python3-dbus python3-cairo python3-gi \
@@ -134,6 +139,11 @@ jobs:
       - name: Install Flatpak tooling
         timeout-minutes: 12
         run: |
+          # Pin Ubuntu mirror IPs: GitHub-hosted runner DNS has intermittently failed.
+          printf '%s\n' \
+            "51.12.153.52 azure.archive.ubuntu.com" \
+            "91.189.91.83 archive.ubuntu.com" \
+            "185.125.190.81 security.ubuntu.com" | sudo tee -a /etc/hosts >/dev/null
           timeout 300 sudo apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=3 update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y flatpak flatpak-builder
           sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
