@@ -15,7 +15,7 @@ root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 out_dir=${1:-"$root/docs/screenshots"}
 pages=(device performance dpi lighting)
 
-for command in xvfb-run dbus-run-session import; do
+for command in xvfb-run dbus-run-session import identify; do
   if ! command -v "$command" >/dev/null 2>&1; then
     echo "missing required command: $command" >&2
     exit 1
@@ -58,7 +58,7 @@ for page in "${pages[@]}"; do
     exit 1
   fi
   "$image_tool" "$raw" -crop 980x760+0+0 +repage "$dest"
-  dimensions=$("$image_tool" identify -format "%wx%h" "$dest")
+  dimensions=$(identify -format "%wx%h" "$dest")
   if [[ "$dimensions" != "980x760" ]]; then
     echo "unexpected screenshot size for $page: $dimensions" >&2
     exit 1
