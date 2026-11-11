@@ -14,158 +14,108 @@ gaming mice on Linux. It talks directly to the mouse's vendor HID interface, so
 you do not need a browser tab, a Windows VM, or the vendor's background service.
 
 RAWM currently provides a WebHID configurator and Windows/Android clients. The
-protocol used here was recovered from the public RAWM HUB web driver. The app
-was developed and tested against an **ER21Pro** (`1915:2338`), both on its own
-link and through the **RAWM HS Receiver** (`1915:232b`).
+protocol used here was recovered from the public RAWM HUB web driver.
 
-> **Hardware status:** the ER21Pro is the only model verified on physical
-> hardware. Other models in the bundled device database use the same protocol
-> but are marked **UNVERIFIED MODEL** in the app. A read-only
-> [device report](docs/DEVICE_REPORTS.md) helps confirm them.
->
+## Compatibility at a glance
+
+| Status | Hardware | What it means |
+|---|---|---|
+| **Verified** | ER21Pro (`1915:2338`) direct, and through the **RAWM HS Receiver** (`1915:232b`) | Tested on physical hardware. |
+| **Catalogued, unverified** | Other recognised RAWM mouse profiles in the [device list](docs/DEVICES.md) | Shared vendor protocol; the app shows **UNVERIFIED MODEL**. These profiles are configurable, but have not been tested on physical hardware. |
+| **Read-only** | Unknown USB product IDs and RAWM keyboards (AK60 `1915:2345`, Z68A `1915:2342`) | Diagnostics only; the app never writes configuration to them. |
+
+Only the ER21Pro is hardware-verified — this is not a claim that the whole RAWM
+family works. The complete matrix of model names, USB IDs, receiver IDs, polling
+limits and power-mode restrictions is in [docs/DEVICES.md](docs/DEVICES.md).
+
 > **Project disclosure:** RAWM Control was built with AI assistance. It is an
 > independent project, not affiliated with or supported by RAWM or MiraclTek.
 
 ## Quick start
 
-**Arch, CachyOS or EndeavourOS:** install the stable package from the AUR.
+For Arch, CachyOS and EndeavourOS:
 
 ```bash
 paru -S rawm-control
-# or: yay -S rawm-control
+rawm-control
 ```
 
-**Other distributions:** use the Flatpak or AppImage from the
+For other distributions, use the Flatpak or AppImage from the
 [latest release](https://github.com/NasirA1991/rawm-control/releases/latest).
-The [installation guide](docs/INSTALL.md) covers dependencies, permissions,
+See the [installation guide](docs/INSTALL.md) for dependencies, permissions,
 updates and uninstall instructions.
 
-**On this page:** [Features](#features) · [Screenshots](#screenshots)
+**On this page:** [Compatibility](#compatibility-at-a-glance)
+· [Features](#features) · [Screenshots](#screenshots)
 · [Installation](#installation) · [Permissions](#permissions) · [Usage](#usage)
-· [Supported devices](#supported-devices) · [Limitations](#limitations)
-· [Troubleshooting](#troubleshooting) · [Documentation](#documentation)
+· [CLI](#cli) · [Supported devices](#supported-devices)
+· [Limitations](#limitations) · [Troubleshooting](#troubleshooting)
+· [Documentation](#documentation) · [Contributing](#contributing)
+· [Security](#security) · [License](#license)
 
 ## Features
 
-- **Battery and tray** — battery level, charging state and connection status in
-  the tray; five icon styles (`ring`, `number`, `battery`, `sidecar`, `mouse`),
-  with a charging bolt and a Passive state when no mouse is connected.
-- **Performance** — polling rate, motion sync, ripple control, angle snapping
-  and tuning, lift-off distance, glass mode, power mode, sleep timer and
-  wireless turbo where the model supports them.
-- **CPI / DPI** — active resolution plus eight configurable levels with indicator
-  colours.
-- **Lighting** — DPI-colour indicator, static colour, off and idle auto-off.
-- **Key delay** — per-button press and release debounce.
-- **Recovery** — restore the settings detected when the mouse connected, or
-  reset local app preferences without touching the mouse.
-- **Safety** — only changed fields are written, on a fresh query, with a
-  read-back check. Unknown and keyboard products stay read-only. A cross-process
-  lock prevents two configurators from writing at once.
-- **Automation** — `rawmctl` exposes status and settings without importing GTK.
+- **Device and battery** — battery percentage, charging and connection status,
+  configurable tray icon styles, and a Passive tray state when no mouse is
+  connected.
+- **Performance and sensor** — polling rate, Motion Sync, ripple control, angle
+  snapping and tuning, lift-off distance, glass mode, power mode, sleep timer
+  and wireless turbo where the model supports them.
+- **DPI and lighting** — active CPI/DPI plus eight configurable levels with
+  indicator colours; static lighting and idle auto-off.
+- **Button settings** — independent press and release debounce.
+- **Recovery and reliability** — restore the settings detected when the mouse
+  connected, write only changed fields on a fresh query, verify writes by
+  reading them back, and lock the device against concurrent configurators.
+- **CLI and automation** — `rawmctl` provides status and settings without
+  importing GTK, including from SSH or a headless terminal.
 - **Local by design** — no telemetry, accounts or cloud service. Device reports
-  are generated locally and are never uploaded automatically.
+  are generated locally and never uploaded automatically.
 
 ## Screenshots
 
-<p align="center">
-  <img src="docs/screenshots/device.png" width="48%" alt="Device page showing battery, firmware and support status">
-  <img src="docs/screenshots/performance.png" width="48%" alt="Performance page with polling rate and sensor settings">
-</p>
-<p align="center">
-  <img src="docs/screenshots/dpi.png" width="48%" alt="DPI page with active resolution and eight levels">
-  <img src="docs/screenshots/lighting.png" width="48%" alt="Lighting page with LED mode and idle behaviour">
-</p>
+| Device overview | Performance and sensor |
+|:--:|:--:|
+| ![Device page showing ER21Pro battery, firmware and support status](docs/screenshots/device.png) | ![Performance page with polling rate and sensor settings](docs/screenshots/performance.png) |
+| **DPI levels** | **Tray icons** |
+| ![DPI page with active resolution and eight levels](docs/screenshots/dpi.png) | ![Tray icons showing battery, charging and disconnected states](docs/screenshots/tray-styles.png) |
 
-![Tray icon styles](docs/screenshots/tray-styles.png)
-
-<sub>Screenshots are rendered by demo mode. Available controls depend on the
-connected model.</sub>
+<sub>The four main-window images are captured from demo mode. The tray image shows
+the app's actual icon renders at real panel sizes; the surrounding panel is
+supplied by the desktop. Available controls depend on the connected model.</sub>
 
 ## Installation
 
-| Format | Best for | Command-line tool |
+| Method | Best for | `rawmctl` |
 |---|---|---|
-| **AUR** `rawm-control` / `rawm-control-git` | Arch, CachyOS, EndeavourOS | `rawmctl` |
-| **Flatpak** `.flatpak` | any distribution with Flatpak and the GNOME 50 runtime | `rawmctl` inside the sandbox |
-| **AppImage** `.AppImage` | trying the app without installing | GUI only |
-| **Source** | development and packaging | `rawmctl` |
+| **AUR** `rawm-control` / `rawm-control-git` | Arch, CachyOS, EndeavourOS | Yes |
+| **Flatpak** | Most distributions; requires the GNOME 50 runtime | Yes, inside the sandbox |
+| **AppImage** | Trying the app without installing | GUI only |
+| **Source** | Development and packaging | Yes |
 
-### AUR
+- **AUR** installs the per-product udev rule automatically.
+- **Flatpak** uses broader `--device=all` access so the sandbox can reach
+  `/dev/hidraw*`.
+- **AppImage** uses the host Python 3.10+ and GTK/PyGObject stack, and does not
+  include `rawmctl`.
+- **Source** installs can use the system or `--user` layout; a user install
+  still needs the udev rule for hardware access.
 
-```bash
-paru -S rawm-control       # latest tagged release
-paru -S rawm-control-git   # latest main
-```
-
-The packages install the udev rule, desktop entry, tray integration and both
-entry points. `rawm-control-git` follows `main`; update it with your AUR helper.
-
-### Flatpak
-
-Download the `.flatpak` from the release page, then:
-
-```bash
-flatpak install --user ./rawm-control-*.flatpak
-flatpak run io.github.rawmcontrol.RawmControl
-```
-
-The Flatpak uses the GNOME 50 runtime, is not distributed through Flathub, and
-exposes `/dev/hidraw*` through `--device=all`. To use the CLI inside the
-sandbox:
-
-```bash
-flatpak run --command=rawmctl io.github.rawmcontrol.RawmControl status
-```
-
-### AppImage
-
-```bash
-chmod +x rawm-control-*.AppImage
-./rawm-control-*.AppImage
-```
-
-The AppImage uses the host's Python 3 (3.10 or newer) and GTK/PyGObject stack.
-Install the dependencies listed in the
-[installation guide](docs/INSTALL.md#appimage) if it does not start. The
-AppImage contains the GUI only; use the Flatpak or a native package for
-`rawmctl`.
-
-### From source
-
-```bash
-git clone https://github.com/NasirA1991/rawm-control.git
-cd rawm-control
-./rawm-control --demo         # preview without a mouse
-sudo ./install.sh             # /usr, including the udev rule
-# or, without root:
-./install.sh --user           # ~/.local, no udev rule
-```
-
-Python 3.10 or newer and the GTK4/PyGObject dependencies are required. See
-[installation](docs/INSTALL.md#from-source) for the full dependency list and
-uninstall commands.
+The [installation guide](docs/INSTALL.md) has the exact commands for every
+format, dependencies, release verification, updates and uninstall instructions.
 
 ## Permissions
 
-Native installs apply a udev rule for the known RAWM mouse and receiver product
-IDs only; it does not grant access to every device using vendor ID `1915`.
-Unknown and keyboard products remain read-only.
+Native packages install a udev rule for the known RAWM mouse and receiver
+product IDs only. They do not grant access to every device using vendor ID
+`1915`, and unknown products and keyboards are excluded from writable access.
+Flatpak is different: its `--device=all` permission is broader than the native
+rule, so prefer a native package if you want narrower access.
 
-If a source or AppImage install reports a permission error, its Device banner
-offers **Copy setup command**. You can also install the rule from a checkout:
-
-```bash
-sudo install -Dm644 data/udev/71-rawm-hid.rules \
-  /usr/lib/udev/rules.d/71-rawm-hid.rules
-sudo udevadm control --reload-rules && sudo udevadm trigger
-# unplug and reconnect the receiver
-```
-
-Flatpak uses `--device=all`, which is broader than the udev rule. Prefer a
-native package if you want narrower device access. Full details, including how
-to regenerate the rule after adding a product, are in
-[the installation guide](docs/INSTALL.md#permissions).
+If a source or AppImage install reports a permission error, the Device banner
+offers **Copy setup command**. The rule and reload commands are documented in
+the [installation guide](docs/INSTALL.md#permissions). Do not run the
+application as root as a workaround for HID permissions.
 
 ## Usage
 
@@ -194,13 +144,10 @@ SSH or from a terminal on a headless machine.
 
 ```bash
 rawmctl status
-rawmctl polling 1000
-rawmctl motion-sync on
-rawmctl dpi 1600
-rawmctl power HP
 rawmctl scan
+rawmctl dpi 1600
+rawmctl polling 1000
 rawmctl report                     # read-only report for a support issue
-rawmctl status --json              # identifiers are redacted
 ```
 
 Setters read the value back and exit non-zero when the mouse does not confirm
@@ -209,15 +156,15 @@ format and exit code.
 
 ## Supported devices
 
-The bundled database contains 23 mouse product IDs (21 model rows), nine
-receiver dongles and two keyboard products. Only the ER21Pro is
-hardware-verified. The complete list of model names, USB IDs and polling limits
-is in [docs/DEVICES.md](docs/DEVICES.md).
+The complete compatibility matrix is in [docs/DEVICES.md](docs/DEVICES.md). The
+bundled data has 23 mouse product IDs across 21 model rows, nine receiver
+dongles and two keyboard products. Only the ER21Pro is hardware-verified.
 
-Unverified models show an **UNVERIFIED MODEL** badge. Unknown PIDs and keyboards
-are read-only: the app will not send mouse configuration to them. Receiver
-dongles are supported, but the paired mouse may be asleep; the app shows a
-Retry banner rather than inventing values.
+Recognised but unverified models are configurable and show an **UNVERIFIED
+MODEL** badge; the badge means untested, not read-only. Unknown PIDs and
+keyboards are different: they remain read-only and are never written. Receiver
+dongles are supported, but the paired mouse may be asleep; the app shows a Retry
+banner rather than inventing values.
 
 To help confirm another model, use **Device → Diagnostics → Save device report**
 (or `rawmctl report`), review the file, and attach it to a
@@ -243,7 +190,7 @@ the snapshot read when the mouse connected. See
 
 | Problem | What to try |
 |---|---|
-| Permission denied | Install the udev rule above, then reconnect the receiver. |
+| Permission denied | Follow the [permissions setup](docs/INSTALL.md#permissions), then reconnect the receiver. |
 | Mouse not found, or reported asleep | Wake the mouse or check the receiver connection; use Retry in the banner. |
 | Settings do not stick | Close RAWM HUB or another configurator; only one writer is allowed. |
 | No tray icon on GNOME | Install an AppIndicator/KStatusNotifierItem extension. |
@@ -266,6 +213,12 @@ receiver behaviour, logs and support reports in more detail.
 | understand the code structure | [Architecture](docs/ARCHITECTURE.md) |
 | contribute or run the tests | [Contributing](CONTRIBUTING.md) |
 | report a security issue | [Security policy](SECURITY.md) |
+
+## Security
+
+Report vulnerabilities through the private process in [SECURITY.md](SECURITY.md)
+rather than a public issue. The policy describes the local-HID security model and
+what is out of scope.
 
 ## Contributing
 
