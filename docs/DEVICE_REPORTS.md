@@ -9,26 +9,28 @@ a read-only report is the most useful thing you can send.
 
 The report is generated **locally** and is **never uploaded automatically**.
 There is no telemetry and no network code in this feature. You get a Markdown
-file, can read it, and choose whether to attach it to a GitHub issue.
+file, can read it, and choose whether to attach it to a GitHub issue. The file
+is written atomically with mode `0600`.
 
 The generator redacts:
 
 - MAC / ESB addresses (`addr`, `esb_addr`, `mac_address`)
 - serial-like values (`serial`, `sn`, `uniq`, `HID_UNIQ`)
-- hostname, username and home paths (the report does not include them)
 
-Review the file before posting anyway. If anything sensitive slipped through,
+It does **not** collect the hostname, username or home directory path. Review
+the file before posting anyway; it still contains the model, firmware,
+descriptor and device path details. If anything sensitive slipped through,
 remove it before attaching.
 
 ## What it collects
 
-- app version, Python, kernel, distro name and session type
+- app version, Python, kernel, architecture, distribution and session type
 - the vendor HID report descriptor
 - `/sys/class/hidraw` uevent/modalias for the collection
 - the raw `CMD_QUERY` JSON from the dongle and/or mouse
 - the matched capability profile and effective polling rates
 - a snapshot of the current settings state
-- filler notes for you to describe what works and what does not
+- notes fields for you to describe what works and what does not
 
 This is enough to add a new PID/capability profile and to inspect an unknown
 query layout. No configuration writes are performed.
@@ -49,6 +51,13 @@ rawmctl report
 rawmctl report -o ~/rawm-report.md
 # print to stdout:
 rawmctl report --stdout
+```
+
+`rawmctl` is included in the AUR/source packages and the Flatpak. The AppImage
+contains the GUI only; use **Device → Diagnostics** there. In a Flatpak:
+
+```bash
+flatpak run --command=rawmctl io.github.rawmcontrol.RawmControl report
 ```
 
 If the mouse is asleep, the report still captures the receiver/dongle identity;

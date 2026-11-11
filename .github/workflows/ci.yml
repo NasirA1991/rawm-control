@@ -30,6 +30,8 @@ jobs:
         run: python3 -m unittest discover -s tests -v
       - name: Byte-compile
         run: python3 -m compileall -q rawm_control
+      - name: Validate documentation
+        run: python3 scripts/check-docs.py
       - name: Validate desktop and AppStream metadata
         run: |
           desktop-file-validate data/io.github.rawmcontrol.RawmControl.desktop

@@ -2,12 +2,25 @@
 
 This is the protocol implemented by `rawm_control.protocol`, recovered from the
 official **RAWM HUB** web driver (`https://rawmtech.com/hub.html`, bundle
-`https://hub.miracletek.net/hub/js/library.min.js`). It is shared by every RAWM
-mouse in the bundled device table and by the vendor's Windows/Android tools.
+`https://hub.miracletek.net/hub/js/library.min.js`). It is shared by the
+supported RAWM mouse profiles in the bundled device table and by the vendor's
+Windows/Android tools.
 
 > Scope: this documents what was verified on an **ER21Pro** (`1915:2338`,
 > firmware `G-1.0.0`, PAW3950). Everything below matches the shipped web
 > driver's code; items marked *inferred* have not been exercised on hardware.
+
+## Contents
+
+1. [USB / HID layout](#1-usb--hid-layout)
+2. [Report framing](#2-report-framing)
+3. [Commands](#3-commands)
+4. [Configuration write](#4-configuration-write)
+5. [CRC envelope](#5-crc-envelope)
+6. [Notifications](#6-notifications)
+7. [Receivers and other models](#7-receivers-and-other-models)
+8. [Deliberately not implemented](#8-deliberately-not-implemented)
+9. [How the web driver was unpacked](#9-how-the-web-driver-was-unpacked)
 
 ## 1. USB / HID layout
 
@@ -21,7 +34,7 @@ mouse in the bundled device table and by the vendor's Windows/Android tools.
 
 The vendor interface report descriptor is only 25 bytes:
 
-```
+```text
 06 00 FF        Usage Page (Vendor Defined 0xFF00)
 09 01           Usage (0x01)
 A1 01           Collection (Application)
@@ -46,7 +59,7 @@ matching `HID_ID=0003:00001915:*` in sysfs *and* a report descriptor containing
 
 Each 64-byte output report starts with the packet type and payload length:
 
-```
+```text
 byte 0    0x80 | payload_length      (PACKET_TYPE_EVENT_DATA)
 byte 1..  concatenated frames
 ```
@@ -60,7 +73,7 @@ packets).
 
 The device prepends a 4-byte resync marker to **every frame**:
 
-```
+```text
 FF FF FF FF   <frame>
 ```
 
@@ -72,7 +85,7 @@ configuration (only relevant when tunnelling through a receiver).
 
 ### Frame
 
-```
+```text
 byte 0    command (bits 0-3) | ((frame_length >> 8) << 4)
 byte 1    frame_length & 0xFF
 byte 2    sub-type (CONFIG_TYPE_* or NOTIFY_TYPE_*)
@@ -98,7 +111,7 @@ block 77+5 bytes, so multi-report reassembly is mandatory.
 
 ### Query
 
-```
+```text
 3-byte header + sub-type 0x03 (OS_PC) + data: 00 00 <6-byte unix time LE>
 ```
 
@@ -222,7 +235,7 @@ these nibbles in place and resends the full parameter block.
 
 When the query says `"crc": 1`, **configuration** frames are wrapped:
 
-```
+```text
 03 | total_len            (CMD_CONFIG, top nibble = len bits 8-11)
 24                        CONFIG_TYPE_CRC
 crc16_lo crc16_hi         over the inner frame (length-prefixed)
@@ -282,7 +295,7 @@ A receiver dongle (PIDs `0x232A`, `0x232B`, `0x2335`, `0x233C`, ...) presents th
 vendor collection but forwards packets to the paired mouse over Nordic ESB. The
 web driver then wraps packets as:
 
-```
+```text
 byte 0    0xC0 | ESB channel       (PACKET_TYPE_EXTENDED)
 byte 1    0x80 | payload length    (inner report header)
 byte 2..  event stream for that channel
@@ -315,10 +328,13 @@ connected mouse over a receiver.
 
 ## 8. Deliberately not implemented
 
+This is the wire-level gap list; the user-facing summary is in the
+[README limitations](../README.md#limitations).
+
 - Key remapping, macros and onboard-profile editing (`CONFIG_TYPE_MOUSE_KEY`,
   `_MOUSE_FUNCTION`, macro segments)
 - Firmware update / DFU
-- Glass mode, DPI-XY, brightness (`CONFIG_TYPE_SET_BRIGHTNESS`)
+- DPI-XY and brightness (`CONFIG_TYPE_SET_BRIGHTNESS`)
 - The vendor's telemetry upload (`mouse_config.php`); this app never phones home
 
 ## 9. How the web driver was unpacked

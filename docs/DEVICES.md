@@ -1,16 +1,19 @@
 # Supported devices
 
 RAWM Control speaks the vendor HID protocol shared by the current RAWM family.
-The capability table comes from the vendor's device database.
+The capability table comes from the vendor's device database. The bundled data
+contains 23 mouse product IDs (collapsed into the 21 model rows below), nine
+receiver dongles and two keyboard products. Only supported mice and receivers
+are writable.
 
 **Hardware verification is limited to the ER21Pro** (`1915:2338`, PAW3950),
 both directly and through a RAWM HS Receiver (`1915:232b`). Other entries use
 the same protocol and capability data but have not been tested on physical
-units. If you have one, please send a
-[read-only device report](DEVICE_REPORTS.md) so support can be confirmed.
+units, and the app marks them **UNVERIFIED MODEL**. If you have one, please send
+a [read-only device report](DEVICE_REPORTS.md) so support can be confirmed.
 
-| Model | USB ID | Direct / own dongle | With 8K receiver |
-|-------|--------|--------------------:|-----------------:|
+| Model | USB ID | Direct / own dongle | With wireless receiver |
+|-------|--------|--------------------:|-----------------------:|
 | ER21 | 1915:233f | 1000 Hz | 8000 Hz |
 | ER21M | 1915:2339 | 1000 Hz | 8000 Hz |
 | ER21Pro | 1915:2338 | 1000 Hz | 8000 Hz |
@@ -34,8 +37,8 @@ units. If you have one, please send a
 | RAWM Knife | 1915:2328 | 1000 Hz | 8000 Hz |
 
 “Direct / own dongle” is what the mouse advertises without a separate receiver;
-“With 8K receiver” is what the vendor driver adds from a compatible dongle.
-The effective maximum also depends on the power mode: **Office = 125 Hz,
+“With wireless receiver” is what the vendor driver adds from a compatible
+dongle. The effective maximum also depends on the power mode: **Office = 125 Hz,
 LP = 1000 Hz**, while HP/Gaming+ allow the table maximum.
 
 ## Receivers
@@ -45,6 +48,24 @@ direct link; the paired mouse is a virtual client on ESB channel 0. RAWM Control
 wraps packets in the extended-channel header, queries the mouse through the
 dongle, and writes settings back the same way. If the mouse is asleep, the app
 shows a Retry banner instead of inventing values.
+
+The database includes these receiver PIDs: `232a`, `232b`, `2335`, `2336`,
+`233b`, `233c`, `2346`, `2347` and `234b`. The ER21Pro verification used
+`1915:232b`. A receiver PID alone does not confirm that a particular mouse
+model has been tested through it.
+
+## Read-only products
+
+The two RAWM keyboard products in the database are deliberately filtered out of
+mouse configuration:
+
+| Product | USB ID | Behaviour |
+|---|---|---|
+| AK60 | 1915:2345 | Read-only diagnostics; never written |
+| Z68A | 1915:2342 | Read-only diagnostics; never written |
+
+Unknown PIDs are treated the same way. Use `rawmctl scan` to identify a device
+and `rawmctl report` to collect the read-only details needed for support.
 
 ## Safety
 
