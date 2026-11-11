@@ -46,6 +46,19 @@ class AppActivationTest(unittest.TestCase):
 
         self.assertTrue(app._activated_once)
 
+    def test_battery_less_model_never_sends_low_battery_notification(self):
+        app = RawmApplication.__new__(RawmApplication)
+        app.window = None
+        app.tray = None
+        app._low_battery_notified = False
+        notifications = []
+        app.send_notification = lambda key, note: notifications.append(key)
+
+        with patch("rawm_control.app.config.load", return_value={"low_battery_notifications": True}):
+            app._apply_state(MouseState(product_id=0x2328, battery=5), set())
+
+        self.assertEqual(notifications, [])
+
     def test_first_close_shows_one_time_background_hint(self):
         app = RawmApplication.__new__(RawmApplication)
         app.window = FakeWindow()

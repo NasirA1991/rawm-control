@@ -404,14 +404,18 @@ class Tray(dbus.service.Object):
         if state is not None:
             self.caps = devices.for_state(state)
             self.polling_rates = devices.effective_polling_rates(state)
-            battery = f"{state.battery}%"
             link = "USB" if state.wired else ("2.4 GHz via receiver" if state.via_receiver else "2.4 GHz")
             charger = ", charging" if state.charging else ""
-            self._status_text = f"{self.caps.display_name} — {battery} · {link}{charger}"
+            if self.caps.battery:
+                battery = f"{state.battery}%"
+                self._status_text = f"{self.caps.display_name} — {battery} · {link}{charger}"
+            else:
+                self._status_text = f"{self.caps.display_name} — {link}{charger}"
         else:
             self._status_text = message or "Click to open RAWM Control"
         self.sni_status = "Active" if connected and state is not None else "Passive"
-        self._icon = render_tray_icon_sizes(state, connected, self.style)
+        style = self.style if state is None or self.caps.battery else "mouse"
+        self._icon = render_tray_icon_sizes(state, connected, style)
         self._emit("NewIcon")
         self._emit("NewToolTip")
         self._emit("NewTitle")
@@ -441,7 +445,8 @@ class Tray(dbus.service.Object):
         if style not in STYLE_KEYS or style == self.style:
             return
         self.style = style
-        self._icon = render_tray_icon_sizes(self.state, self.connected, style)
+        effective = style if self.caps.battery else "mouse"
+        self._icon = render_tray_icon_sizes(self.state, self.connected, effective)
         self._emit("NewIcon")
         self.menu.refresh()
 

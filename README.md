@@ -31,6 +31,22 @@ paru -S rawm-control-git   # latest main
 [releases page](https://github.com/NasirA1991/rawm-control/releases/latest), or
 see [Installation](#installation) for dependencies and source builds.
 
+Every release includes a `SHA256SUMS` file and keyless cosign bundles for each
+artifact. Verify a download before running it:
+
+```bash
+cd ~/Downloads
+sha256sum -c SHA256SUMS
+cosign verify-blob \
+  --bundle rawm-control-VERSION.tar.gz.sigstore \
+  --certificate-identity-regexp 'https://github\.com/NasirA1991/rawm-control/\.github/workflows/release\.yml@refs/tags/v.*' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  rawm-control-VERSION.tar.gz
+```
+
+Replace `VERSION` with the release you downloaded. The `.sigstore` bundles are
+optional for normal use; `SHA256SUMS` is the quick integrity check.
+
 **On this page:** [Features](#features) · [Installation](#installation)
 · [Permissions](#permissions) · [Usage](#usage)
 · [Supported devices](#supported-devices) · [Limitations](#limitations)
@@ -147,19 +163,26 @@ Or build a local Arch package with `makepkg -si`.
 ## Permissions
 
 The vendor HID collection is `/dev/hidrawN`, normally `root:root` with a udev
-`uaccess` ACL. The rule is vendor-wide (`1915`), while the app itself only opens
-known mouse products and rejects keyboards/unknown devices.
+`uaccess` ACL. The shipped rule matches only the known RAWM mouse and receiver
+product IDs, not every Nordic Semiconductor (`1915`) device. Unknown or
+keyboard products remain read-only even if they share the vendor ID.
 
 If the app reports a permission error, its Device banner offers **Copy setup
-command** with the exact host command. For a source or AppImage install, add the
-rule once (the source copy is at `data/udev/71-rawm-hid.rules`):
+command** with the exact host command. For a source or AppImage install, install
+the generated rule once (the source copy is at
+`data/udev/71-rawm-hid.rules`):
 
 ```bash
-echo 'SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1915", TAG+="uaccess", MODE="0660"' \
-  | sudo tee /usr/lib/udev/rules.d/71-rawm-hid.rules >/dev/null
+sudo install -Dm644 data/udev/71-rawm-hid.rules \
+  /usr/lib/udev/rules.d/71-rawm-hid.rules
 sudo udevadm control --reload-rules && sudo udevadm trigger
 # unplug/replug the receiver
 ```
+
+After adding a model to `rawm_control/data/devices.json`, regenerate the rule
+with `scripts/generate-udev-rules.py`. For an unlisted future model, opt in
+manually with a `1915`-wide rule only if you understand that it grants raw HID
+access to every device using that vendor ID.
 
 System/AUR installs do this automatically. Flatpak uses `--device=all`, which is
 broader than the udev rule; use the AUR or source package if you prefer narrower

@@ -18,7 +18,7 @@ gi.require_version("Adw", "1")
 
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
-from . import cli, config  # noqa: E402
+from . import cli, config, devices  # noqa: E402
 from .ui import MainWindow  # noqa: E402
 from .worker import DeviceWorker  # noqa: E402
 
@@ -217,8 +217,10 @@ class RawmApplication(Adw.Application):
             self.window.on_state(state, changed)
         if self.tray is not None:
             self.tray.update(state, True)
+        caps = devices.for_state(state)
         if (
-            state.battery <= 15
+            caps.battery
+            and state.battery <= 15
             and not state.charging
             and config.load().get("low_battery_notifications", True)
             and not self._low_battery_notified

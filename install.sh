@@ -47,7 +47,7 @@ cat > "$BINDIR/rawm-control" <<LAUNCHER
 #!/usr/bin/env python3
 import sys
 sys.path.insert(0, "${PREFIX}/lib/rawm-control")
-from rawm_control.app import main
+from rawm_control.__main__ import main
 sys.exit(main())
 LAUNCHER
 chmod 0755 "$BINDIR/rawm-control"

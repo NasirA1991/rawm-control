@@ -282,9 +282,9 @@ class DeviceWorker:
         self._receiver_pid = info.product_id if caps.receiver else None
         state.via_receiver = caps.receiver
         state.receiver_product_id = self._receiver_pid
+        apply_notifications(state, frames)
         with self._lock:
             self._state = state
-        apply_notifications(state, frames)
         self._baseline_state = copy.deepcopy(state)
         self._emit_link(True, None)
         self._emit_state(set())
@@ -303,13 +303,22 @@ class DeviceWorker:
         self._receiver_pid = None
         self._query_misses = 0
         self._baseline_state = None
+        dropped = (
+            self._pending_confirm is not None
+            or self._pending_sleep_confirm is not None
+            or self._pending_patch is not None
+            or self._pending_sleep is not None
+        )
         if self._pending_confirm is not None or self._pending_sleep_confirm is not None:
             self._pending_confirm = None
             self._pending_sleep_confirm = None
             self._emit_write(False, "Device disconnected before confirming the change")
+        elif dropped:
+            self._emit_write(False, "Device disconnected before the change was sent")
         with self._lock:
             self._state = MouseState()
             self._pending_patch = None
+            self._pending_sleep = None
         self._emit_link(False, reason)
 
     def _preserve_runtime_fields(self, fresh: MouseState) -> MouseState:
@@ -392,6 +401,15 @@ class DeviceWorker:
             self._force_query = False
             self._read_rssi = False
 
+        lock_held = False
+        if pending_patch is not None or pending_sleep is not None:
+            try:
+                device.lock_exclusive()
+                lock_held = True
+            except protocol.DeviceBusy as exc:
+                self._emit_write(False, str(exc))
+                return
+
         try:
             if pending_patch is not None:
                 # Rebase the user's intent onto a fresh complete snapshot.
@@ -416,7 +434,9 @@ class DeviceWorker:
             if pending_sleep is not None:
                 device.set_sleep_time(pending_sleep, crc=self.state.crc)
                 with self._lock:
-                    self._state.sleep_time = pending_sleep
+                    state = copy.deepcopy(self._state)
+                    state.sleep_time = pending_sleep
+                    self._state = state
                 self._pending_sleep_confirm = pending_sleep
                 self._confirm_at = time.monotonic() + 0.4
             if want_rssi:
@@ -426,6 +446,9 @@ class DeviceWorker:
                 self._emit_write(False, f"Write failed: {exc}")
             self._disconnect(str(exc))
             return
+        finally:
+            if lock_held:
+                device.unlock()
 
         # Block on the fd instead of waking every ~170 ms.  0.5 s still gives
         # prompt notification handling while keeping an idle tray almost free.
@@ -450,7 +473,7 @@ class DeviceWorker:
 
     def _consume(self, frames: list[Frame]) -> None:
         with self._lock:
-            state = self._state
+            state = copy.deepcopy(self._state)
         changed: set[str] = set()
         for frame in frames:
             if frame.cmd == CMD_QUERY_RESULT:

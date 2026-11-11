@@ -64,12 +64,7 @@ CSS = """
 COLOR_LABELS = [name for name in COLOR_NAMES]
 COLOR_KEY_BY_INDEX = ["off", "red", "green", "blue", "yellow", "purple", "skyblue", "white"]
 
-UDEV_COMMAND = (
-    "echo 'SUBSYSTEM==\"hidraw\", ATTRS{idVendor}==\"1915\", "
-    "TAG+=\"uaccess\", MODE=\"0660\"' | "
-    "sudo tee /usr/lib/udev/rules.d/71-rawm-hid.rules >/dev/null\n"
-    "sudo udevadm control --reload-rules && sudo udevadm trigger"
-)
+UDEV_COMMAND = devices.udev_copy_command()
 
 
 def _same_labels(model, labels: list[str]) -> bool:
@@ -677,6 +672,7 @@ class MainWindow(Adw.ApplicationWindow):
             self.banner.set_revealed(False)
             self.stack.set_sensitive(True)
             self.gauge.set_state(state, True)
+            self.gauge.set_visible(caps.battery)
 
             self.hero_title.set_text(caps.display_name)
             bits = [state.firmware or "firmware ?", state.sensor or caps.sensor or "sensor ?"]
@@ -684,7 +680,9 @@ class MainWindow(Adw.ApplicationWindow):
             self.badge_link.set_text(
                 "USB" if state.wired else ("via receiver" if state.via_receiver else "2.4 GHz")
             )
-            self.badge_sensor.set_text("charging" if state.charging else "on battery")
+            self.badge_sensor.set_text(
+                "charging" if state.charging else ("wired" if not caps.battery else "on battery")
+            )
 
             self.row_model.set_subtitle(caps.display_name)
             self.row_trust.set_subtitle(devices.support_status(caps))
@@ -979,14 +977,14 @@ class MainWindow(Adw.ApplicationWindow):
         self._schedule_write()
 
     def _on_press_changed(self, row, _pspec) -> None:
-        if self._loading or not self._state:
+        if self._loading or not self._state or not self._state.key_delay:
             return
         index = max(0, min(self._key_index, len(self._state.key_delay) - 1))
         byte = (self._state.key_delay[index] & 0xF0) | (int(round(row.get_value())) & 0x0F)
         self._write_key_delay(index, byte)
 
     def _on_release_changed(self, row, _pspec) -> None:
-        if self._loading or not self._state:
+        if self._loading or not self._state or not self._state.key_delay:
             return
         index = max(0, min(self._key_index, len(self._state.key_delay) - 1))
         byte = ((int(round(row.get_value())) & 0x0F) << 4) | (self._state.key_delay[index] & 0x0F)

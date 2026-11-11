@@ -127,6 +127,37 @@ def all_capabilities() -> list[Capabilities]:
     return sorted(_DB.values(), key=lambda c: c.display_name.lower())
 
 
+def udev_rule_text() -> str:
+    """Return the per-product udev rule for every supported mouse/receiver.
+
+    Matching the Nordic vendor ID alone would grant raw HID access to every
+    unrelated 0x1915 device (dev kits, keyboards, third-party dongles).  Keep
+    the rule in sync with the capability database instead.
+    """
+    lines = [
+        "# RAWM gaming mice expose a 64-byte vendor HID collection (vendor 0x1915).",
+        "# Generated from rawm_control/data/devices.json by scripts/generate-udev-rules.py.",
+        "# Only known RAWM mice and receivers are matched; add a model to the database first.",
+    ]
+    for caps in sorted(_DB.values(), key=lambda c: c.product_id):
+        if not (caps.mouse or caps.receiver):
+            continue
+        lines.append(
+            'SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1915", '
+            f'ATTRS{{idProduct}}=="{caps.product_id:04x}", '
+            'TAG+="uaccess", MODE="0660"'
+        )
+    return "\n".join(lines) + "\n"
+
+
+def udev_copy_command() -> str:
+    return (
+        "sudo tee /usr/lib/udev/rules.d/71-rawm-hid.rules >/dev/null <<'EOF'\n"
+        + udev_rule_text()
+        + "EOF\n"
+        "sudo udevadm control --reload-rules && sudo udevadm trigger"
+    )
+
 def _receiver_caps(state) -> Capabilities | None:
     pid = getattr(state, "receiver_product_id", None)
     return _DB.get(int(pid)) if pid else None
