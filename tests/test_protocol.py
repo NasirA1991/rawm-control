@@ -235,6 +235,32 @@ class StateTests(unittest.TestCase):
                 with self.assertRaises(ProtocolError):
                     state_from_query(doc)
 
+    def test_partial_query_uses_base_instead_of_defaults(self):
+        base = MouseState(
+            product_id=0x2338,
+            cpi=800,
+            cpi_levels=[400, 800, 0, 0, 0, 0, 0, 0],
+            light=0x10,
+            polling_rate=500,
+        )
+        state = state_from_query({"pi": 0x2338}, base=base)
+        self.assertEqual(state.cpi, 800)
+        self.assertEqual(state.cpi_levels, [400, 800, 0, 0, 0, 0, 0, 0])
+        self.assertEqual(state.light, 0x10)
+        self.assertEqual(state.polling_rate, 500)
+
+    def test_led_flag_is_not_stored_in_state(self):
+        state = state_from_query({"pi": 0x2338, "light": 0x38})
+        self.assertEqual(state.light, 0x30)
+        self.assertTrue(protocol.values_match("light", 0x30, 0x38))
+
+    def test_open_wraps_unexpected_io_errors(self):
+        if not hasattr(protocol.os, "O_NONBLOCK"):
+            self.skipTest("hidraw transport is Linux-only")
+        with patch.object(protocol.os, "open", side_effect=OSError(5, "I/O error")):
+            with self.assertRaises(ProtocolError):
+                RawmDevice("/dev/hidraw-test").open()
+
 
 if __name__ == "__main__":
     unittest.main()

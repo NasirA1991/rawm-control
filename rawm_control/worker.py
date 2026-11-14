@@ -66,6 +66,7 @@ class DeviceWorker:
         self._via_receiver = False
         self._receiver_pid: int | None = None
         self._warned_permission = False
+        self._busy_notified = False
 
     # -- public API --------------------------------------------------------
     def start(self) -> None:
@@ -322,13 +323,18 @@ class DeviceWorker:
         self._emit_link(False, reason)
 
     def _preserve_runtime_fields(self, fresh: MouseState) -> MouseState:
-        """Carry connection metadata and runtime-only values across queries."""
+        """Carry connection metadata and runtime-only values across queries.
+
+        Notifications are applied *after* this method so a calibration or RSSI
+        frame received during the query wins over the previous snapshot.
+        """
         with self._lock:
             previous = self._state
         fresh.via_receiver = self._via_receiver
         fresh.receiver_product_id = self._receiver_pid
         fresh.battery_levels = previous.battery_levels or fresh.battery_levels
         fresh.rssi = previous.rssi
+        fresh.surface_quality = previous.surface_quality
         return fresh
 
     def _perform_query(self, requested: bool = False) -> None:
@@ -336,10 +342,11 @@ class DeviceWorker:
         if device is None:
             return
         try:
-            state, frames = device.query(timeout=1.4)
+            state, frames = device.query(timeout=1.4, base=self.state)
         except ProtocolError as exc:
             self._disconnect(str(exc))
             return
+        document = getattr(device, "last_document", None)
         if state is None:
             # A sleeping mouse simply does not answer. Keep the last known
             # state alive; only give up if reads/writes fail or the node goes.
@@ -358,10 +365,24 @@ class DeviceWorker:
                 )
             return
         self._query_misses = 0
+        # Receiver metadata and runtime-only values belong to the connection,
+        # not to the JSON query result.  Apply them first so notifications that
+        # arrived in the same read batch can still update battery calibration,
+        # RSSI and surface quality.
+        state = self._preserve_runtime_fields(state)
+        _, notified = apply_notifications(state, frames)
         if self._pending_confirm is not None:
             expected = self._pending_confirm
             self._pending_confirm = None
-            ok = all(getattr(state, name, None) == value for name, value in expected.items())
+            ok = all(
+                (
+                    not isinstance(document, dict)
+                    or name in notified
+                    or protocol.query_field_present(document, name)
+                )
+                and protocol.values_match(name, getattr(state, name, None), value)
+                for name, value in expected.items()
+            )
             self._emit_write(
                 ok,
                 "Saved to mouse" if ok else "Mouse did not confirm the requested change",
@@ -369,16 +390,16 @@ class DeviceWorker:
         if self._pending_sleep_confirm is not None:
             expected_sleep = self._pending_sleep_confirm
             self._pending_sleep_confirm = None
-            ok = abs(state.sleep_time - expected_sleep) < 30
+            present = (
+                not isinstance(document, dict)
+                or "sleep_time" in notified
+                or protocol.query_field_present(document, "sleep_time")
+            )
+            ok = present and abs(state.sleep_time - expected_sleep) < 30
             self._emit_write(
                 ok,
                 "Sleep timer saved" if ok else "Mouse did not confirm the sleep timer",
             )
-        apply_notifications(state, frames)
-        # Receiver metadata belongs to the connection, not to the JSON query
-        # result.  A refresh must not downgrade an 8K receiver link to a
-        # direct 2.4 GHz one, and runtime-only values must survive.
-        state = self._preserve_runtime_fields(state)
         with self._lock:
             self._state = state
         self._last_query = time.monotonic()
@@ -406,19 +427,37 @@ class DeviceWorker:
             try:
                 device.lock_exclusive()
                 lock_held = True
+                self._busy_notified = False
             except protocol.DeviceBusy as exc:
-                self._emit_write(False, str(exc))
+                # Do not lose the edit just because another process is
+                # configuring the mouse.  Put it back, preserving anything the
+                # user queued while we were blocked, and retry shortly.
+                with self._lock:
+                    if pending_patch is not None:
+                        merged = dict(pending_patch)
+                        if self._pending_patch:
+                            merged.update(self._pending_patch)
+                        self._pending_patch = merged
+                    if pending_sleep is not None and self._pending_sleep is None:
+                        self._pending_sleep = pending_sleep
+                if not self._busy_notified:
+                    self._busy_notified = True
+                    self._emit_write(False, str(exc))
+                self._stop.wait(0.25)
                 return
+        else:
+            self._busy_notified = False
 
         try:
             if pending_patch is not None:
                 # Rebase the user's intent onto a fresh complete snapshot.
-                fresh, frames = device.query(timeout=1.4)
+                fresh, frames = device.query(timeout=1.4, base=self.state)
                 if fresh is None:
                     self._emit_write(False, "Mouse did not answer; change not saved")
                     return
-                apply_notifications(fresh, frames)
+                # Preserve first, then let notifications win.
                 fresh = self._preserve_runtime_fields(fresh)
+                apply_notifications(fresh, frames)
                 error = devices.validate_patch(fresh, pending_patch)
                 if error:
                     self._emit_write(False, f"Change rejected: {error}")
@@ -498,7 +537,19 @@ class DeviceWorker:
         backoff = 0.5
         while not self._stop.is_set():
             if self._device is None or not self._device.is_open:
-                if self._connect():
+                try:
+                    connected = self._connect()
+                except Exception as exc:
+                    # _connect() must never kill the worker thread.  Most
+                    # transport errors are ProtocolError, but a platform or
+                    # sysfs failure can still surface as OSError.
+                    logger.exception("Connection attempt failed")
+                    if self._device is not None:
+                        self._device.close()
+                        self._device = None
+                    self._emit_link(False, f"Connection error: {exc}")
+                    connected = False
+                if connected:
                     backoff = 0.5
                     continue
                 self._wake.wait(backoff)

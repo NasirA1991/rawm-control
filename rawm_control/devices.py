@@ -7,6 +7,7 @@ only the settings a given mouse actually supports.
 
 from __future__ import annotations
 
+import copy
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -168,6 +169,33 @@ def wireless_boost(state) -> bool:
     return bool(getattr(state, "via_receiver", False) and not getattr(state, "wired", False))
 
 
+def _power_mode_polling_cap(caps: Capabilities, mode: int) -> int | None:
+    """Maximum polling rate imposed by a power mode, if it has one.
+
+    Mode lists are not all the same length: Nordic models use
+    ["Office", "LP", "HP", "Gaming+"], while some PANCHIP models use
+    ["LP", "HP"].  Match the names first and fall back to the known list
+    shapes rather than assuming a fixed index.
+    """
+    if not 0 <= mode < len(caps.power_modes):
+        return None
+    name = caps.power_modes[mode].strip().lower()
+    if name.startswith("office"):
+        return 125
+    if name == "lp" or name.startswith("low power"):
+        return 1000
+    if len(caps.power_modes) == 2:
+        # Common PANCHIP layout: [LP, HP].
+        return 1000 if mode == 0 else None
+    if len(caps.power_modes) >= 3:
+        # Older profiles used [Office, LP, HP] without names we can trust.
+        if mode == 0:
+            return 125
+        if mode == 1:
+            return 1000
+    return None
+
+
 def max_polling_rate(state) -> int:
     """Mirror get_max_polling_rate(): link type + power mode + model cap."""
     caps = for_state(state)
@@ -180,11 +208,9 @@ def max_polling_rate(state) -> int:
     else:
         limit = max(caps.polling_rates) if caps.polling_rates else 1000
         limit = min(limit, caps.polling_rate_max)
-    if len(caps.power_modes) >= 3:
-        if state.power_mode == 0:
-            limit = min(limit, 125)
-        elif state.power_mode == 1:
-            limit = min(limit, 1000)
+    cap = _power_mode_polling_cap(caps, state.power_mode)
+    if cap is not None:
+        limit = min(limit, cap)
     return limit
 
 
@@ -239,6 +265,21 @@ def validate_patch(state: MouseState, patch: dict) -> str | None:
     caps = for_state(state)
     if not caps.mouse or caps.keyboard or caps.receiver:
         return "this device is not a supported writable mouse"
+
+    # Validate against the state that will actually be written.  In
+    # particular, a patch may change power mode and polling rate together.
+    candidate = copy.deepcopy(state)
+    if "power_mode" in patch:
+        if not caps.power_modes:
+            return "power mode is not mapped for this model"
+        try:
+            mode = int(patch["power_mode"])
+        except (TypeError, ValueError):
+            return "invalid power mode"
+        if not 0 <= mode < len(caps.power_modes):
+            return "invalid power mode"
+        candidate.power_mode = mode
+
     for key, value in patch.items():
         if key not in WRITE_FIELDS:
             return f"unknown field '{key}'"
@@ -253,8 +294,9 @@ def validate_patch(state: MouseState, patch: dict) -> str | None:
                 hz = int(value)
             except (TypeError, ValueError):
                 return "invalid polling rate"
-            if hz < 50 or hz > max_polling_rate(state):
+            if hz < 50 or hz > max_polling_rate(candidate):
                 return f"polling rate {hz} Hz is not available on this link"
+            candidate.polling_rate = hz
         if key == "cpi":
             try:
                 cpi = int(value)
@@ -262,13 +304,18 @@ def validate_patch(state: MouseState, patch: dict) -> str | None:
                 return "invalid CPI"
             if not caps.cpi_range[0] <= cpi <= caps.cpi_range[1]:
                 return f"CPI {cpi} is outside this model's range"
-        if key == "power_mode":
-            if not caps.power_modes:
-                return "power mode is not mapped for this model"
-            try:
-                mode = int(value)
-            except (TypeError, ValueError):
-                return "invalid power mode"
-            if not 0 <= mode < len(caps.power_modes):
-                return "invalid power mode"
+            if caps.cpi_step and cpi % caps.cpi_step:
+                return f"CPI {cpi} is not a multiple of {caps.cpi_step}"
+            candidate.cpi = cpi
+
+    # A power-mode change can lower the ceiling even when the polling rate is
+    # not part of the same patch.  Reject the combination instead of writing a
+    # rate the link cannot carry.
+    if ("power_mode" in patch or "polling_rate" in patch) and int(
+        candidate.polling_rate
+    ) > max_polling_rate(candidate):
+        return (
+            f"polling rate {candidate.polling_rate} Hz is not available "
+            "in the requested power mode"
+        )
     return None

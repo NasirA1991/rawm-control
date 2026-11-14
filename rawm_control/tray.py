@@ -137,7 +137,12 @@ def _charging_bolt(ctx: cairo.Context, cx: float, cy: float, radius: float = 9.0
     ctx.fill()
 
 
-def render_mouse_icon(state: MouseState | None, connected: bool, size: int = ICON_SIZE) -> list[tuple[int, int, bytes]]:
+def render_mouse_icon(
+    state: MouseState | None,
+    connected: bool,
+    size: int = ICON_SIZE,
+    show_battery: bool = True,
+) -> list[tuple[int, int, bytes]]:
     """Mouse glyph with a small battery column (no digits)."""
     surface, ctx = _canvas(size)
     accent, level, charging, _text_value = _accent(state, connected)
@@ -160,7 +165,7 @@ def render_mouse_icon(state: MouseState | None, connected: bool, size: int = ICO
     _rounded_rect(ctx, 29.0, 11.0, 6.0, 9.0, 3.0)
     ctx.fill()
 
-    if connected:
+    if connected and show_battery:
         bar_x, bar_y, bar_w, bar_h = 23.0, 28.0, 18.0, 26.0
         ctx.set_source_rgba(0.03, 0.06, 0.12, 0.42)
         _rounded_rect(ctx, bar_x, bar_y, bar_w, bar_h, 4.0)
@@ -304,11 +309,15 @@ def render_tray_icon_sizes(
     connected: bool,
     style: str = DEFAULT_TRAY_STYLE,
     sizes: tuple[int, ...] = TRAY_ICON_SIZES,
+    show_battery: bool = True,
 ) -> list[tuple[int, int, bytes]]:
     renderer = _RENDERERS.get(style, render_ring_icon)
     out: list[tuple[int, int, bytes]] = []
     for size in sizes:
-        out.extend(renderer(state, connected, size))
+        if renderer is render_mouse_icon:
+            out.extend(renderer(state, connected, size, show_battery=show_battery))
+        else:
+            out.extend(renderer(state, connected, size))
     return out
 
 
@@ -372,7 +381,9 @@ class Tray(dbus.service.Object):
         # no mouse is connected; it becomes Active as soon as one is present.
         self.sni_status = "Passive"
         self.polling_rates = [125, 250, 500, 1000]
-        self._icon = render_tray_icon_sizes(None, False, self.style)
+        self._icon = render_tray_icon_sizes(
+            None, False, self.style, show_battery=self.caps.battery
+        )
 
         # Flatpak does not allow owning the conventional PID-based SNI name
         # (wildcards are invalid), so inside the sandbox use a name derived from
@@ -415,7 +426,9 @@ class Tray(dbus.service.Object):
             self._status_text = message or "Click to open RAWM Control"
         self.sni_status = "Active" if connected and state is not None else "Passive"
         style = self.style if state is None or self.caps.battery else "mouse"
-        self._icon = render_tray_icon_sizes(state, connected, style)
+        self._icon = render_tray_icon_sizes(
+            state, connected, style, show_battery=self.caps.battery
+        )
         self._emit("NewIcon")
         self._emit("NewToolTip")
         self._emit("NewTitle")
@@ -446,7 +459,9 @@ class Tray(dbus.service.Object):
             return
         self.style = style
         effective = style if self.caps.battery else "mouse"
-        self._icon = render_tray_icon_sizes(self.state, self.connected, effective)
+        self._icon = render_tray_icon_sizes(
+            self.state, self.connected, effective, show_battery=self.caps.battery
+        )
         self._emit("NewIcon")
         self.menu.refresh()
 

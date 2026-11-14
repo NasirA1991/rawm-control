@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import logging
 import os
@@ -92,7 +93,7 @@ def _verify(dev: RawmDevice) -> MouseState | None:
 
 def _apply_changes(dev: RawmDevice, state: MouseState, **changes) -> MouseState:
     """Rebase a CLI intent onto a fresh snapshot before writing."""
-    fresh, _frames = dev.query(timeout=1.4)
+    fresh, _frames = dev.query(timeout=1.4, base=state)
     if fresh is None:
         raise protocol.ProtocolError("mouse did not answer the fresh query")
     fresh.via_receiver = state.via_receiver
@@ -106,6 +107,10 @@ def _apply_changes(dev: RawmDevice, state: MouseState, **changes) -> MouseState:
     if error:
         raise protocol.ProtocolError(error)
     dev.set_state(fresh)
+    # The config write is applied asynchronously by the mouse.  Give it the
+    # same settling window as the GUI and the sleep command before reading
+    # back, otherwise an immediate query can report a false failure.
+    time.sleep(0.4)
     return fresh
 
 
@@ -395,10 +400,34 @@ def run(argv: list[str], prog: str = "rawm-control") -> int:
                     index = matches[0]
                 if not 0 <= index < len(modes):
                     parser.error(f"power modes: {', '.join(modes)}")
-                _apply_changes(dev, state, power_mode=index)
+                changes = {"power_mode": index}
+                probe = copy.deepcopy(state)
+                probe.power_mode = index
+                maximum = devices.max_polling_rate(probe)
+                if probe.polling_rate > maximum:
+                    allowed = [
+                        rate
+                        for rate in devices.effective_polling_rates(probe)
+                        if rate <= maximum
+                    ]
+                    changes["polling_rate"] = max(allowed) if allowed else maximum
+                _apply_changes(dev, state, **changes)
                 new = _verify(dev)
-                if new and new.power_mode == index:
+                confirmed = bool(
+                    new
+                    and new.power_mode == index
+                    and (
+                        "polling_rate" not in changes
+                        or new.polling_rate == changes["polling_rate"]
+                    )
+                )
+                if confirmed:
                     print(f"power mode set to {modes[index]}")
+                    if "polling_rate" in changes:
+                        print(
+                            f"polling rate lowered to {changes['polling_rate']} Hz "
+                            "for this power mode"
+                        )
                     return 0
                 print("device did not confirm the power mode", file=sys.stderr)
                 return 2
@@ -434,6 +463,9 @@ def run(argv: list[str], prog: str = "rawm-control") -> int:
         return 2
     except protocol.ProtocolError as exc:
         print(f"Protocol error: {exc}", file=sys.stderr)
+        return 2
+    except OSError as exc:
+        print(f"I/O error: {exc}", file=sys.stderr)
         return 2
 
 

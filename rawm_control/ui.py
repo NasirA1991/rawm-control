@@ -1034,6 +1034,17 @@ class MainWindow(Adw.ApplicationWindow):
             return
         if 0 <= index < len(modes) and index != self._state.power_mode:
             self._state.power_mode = index
+            # Lower the polling rate with the power mode when the new ceiling
+            # is below the current rate.  Submitting only power_mode here would
+            # leave an out-of-range rate in the same parameter block.
+            maximum = devices.max_polling_rate(self._state)
+            if self._state.polling_rate > maximum:
+                allowed = [
+                    rate
+                    for rate in devices.effective_polling_rates(self._state)
+                    if rate <= maximum
+                ]
+                self._state.polling_rate = max(allowed) if allowed else maximum
             self._loading = True
             try:
                 self._update_polling_combo(self._state, self._current_caps())

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import tempfile
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -50,25 +51,68 @@ DEFAULTS = {
 }
 
 
+def _sanitize(data: dict) -> dict:
+    """Return a complete, correctly typed preference dictionary."""
+    clean = dict(DEFAULTS)
+    if not isinstance(data, dict):
+        return clean
+    for key in (
+        "start_hidden",
+        "low_battery_notifications",
+        "tray_percent",
+        "close_hint_shown",
+    ):
+        value = data.get(key, DEFAULTS[key])
+        if isinstance(value, bool):
+            clean[key] = value
+    style = data.get("tray_icon_style")
+    if not isinstance(style, str) or style not in dict(TRAY_STYLES):
+        style = "ring" if clean["tray_percent"] else "mouse"
+    clean["tray_icon_style"] = style
+    category = data.get("tray_category")
+    if not isinstance(category, str) or category not in dict(TRAY_CATEGORIES):
+        category = DEFAULT_TRAY_CATEGORY
+    clean["tray_category"] = category
+    return clean
+
+
 def load() -> dict:
-    data = dict(DEFAULTS)
     path = config_path()
     try:
-        data.update(json.loads(path.read_text(encoding="utf-8")))
+        raw = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
-        pass
+        return dict(DEFAULTS)
     except (OSError, ValueError) as exc:
         logger.warning("Could not read preferences from %s: %s", path, exc)
-    return data
+        return dict(DEFAULTS)
+    if not isinstance(raw, dict):
+        logger.warning("Ignoring preferences in %s: expected a JSON object", path)
+        return dict(DEFAULTS)
+    return _sanitize(raw)
 
 
 def save(data: dict) -> None:
     path = config_path()
+    payload = _sanitize(data)
+    tmp_name: str | None = None
     try:
         config_dir().mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(json.dumps(payload, indent=2) + "\n")
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.chmod(tmp_name, 0o600)
+        os.replace(tmp_name, path)
+        tmp_name = None
     except OSError as exc:
         logger.warning("Could not save preferences to %s: %s", path, exc)
+    finally:
+        if tmp_name is not None:
+            try:
+                os.unlink(tmp_name)
+            except OSError:
+                pass
 
 
 def mark_close_hint_shown() -> bool:

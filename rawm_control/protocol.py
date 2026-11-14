@@ -113,6 +113,49 @@ COLOR_BITS = {
 }
 COLOR_BITS_TO_NAME = {v: k for k, v in COLOR_BITS.items()}
 
+
+def normalize_light(value: int) -> int:
+    """Return persistent light bits without the write-only "apply" flag."""
+    return int(value) & 0xFF & ~LED_FLAG
+
+
+def values_match(name: str, actual, expected) -> bool:
+    """Compare a parsed device value with a value queued for writing."""
+    if name == "light":
+        return normalize_light(actual) == normalize_light(expected)
+    return actual == expected
+
+
+# Query keys that back fields serialised by encode_mouse_param().  The
+# battery calibration is notification-only and intentionally absent.
+QUERY_WRITE_KEYS = {
+    "cpi": "cpi",
+    "cpi_levels": "cpi_l",
+    "cpi_level_colors": "cpi_l_c",
+    "polling_rate": "polling",
+    "light": "light",
+    "onboard": "ob",
+    "power_mode": "pm",
+    "lod": "lod",
+    "key_delay": "kd",
+    "motion_sync": "ms",
+    "angle_tuning": "at",
+    "angle_snapping": "as",
+    "ripple_control": "rctrl",
+    "tx_output_power": "top",
+    "auto_tx_power": "atp",
+    "onboard_status": "ocs",
+    "glass_mode_enabled": "gm",
+    "sleep_time": "st",
+}
+
+
+def query_field_present(doc: dict, name: str) -> bool:
+    """Whether a write-backed field was actually present in this reply."""
+    key = QUERY_WRITE_KEYS.get(name)
+    return bool(isinstance(doc, dict) and key and doc.get(key) is not None)
+
+
 # Default calibration table used by every RAWM mice seen so far.  The device
 # reports its own copy via NOTIFY_BATTERY_LEVELS; this is only a fallback used
 # when writing a parameter block before the first notification arrives.
@@ -337,7 +380,7 @@ def state_from_query(doc: dict, base: MouseState | None = None) -> MouseState:
     put("wired", "wired", lambda v: bool(v))
     put("cpi", "cpi", lambda v: max(0, min(30000, int(v))))
     put("polling_rate", "polling", lambda v: max(0, min(8000, int(v))))
-    put("light", "light", lambda v: int(v) & 0xFF)
+    put("light", "light", normalize_light)
     put("lod", "lod", lambda v: max(0, min(3, int(v))))
     put("power_mode", "pm", lambda v: max(0, min(3, int(v))))
     put("motion_sync", "ms", lambda v: 1 if int(v) else 0)
@@ -574,6 +617,7 @@ class RawmDevice:
         self.fd = -1
         self.stream = FrameStream()
         self.last_error: str | None = None
+        self.last_document: dict | None = None
         self._locked = False
 
     # -- lifecycle ---------------------------------------------------------
@@ -589,6 +633,8 @@ class RawmDevice:
             ) from exc
         except FileNotFoundError as exc:
             raise DeviceNotFound(f"{self.path} disappeared") from exc
+        except OSError as exc:
+            raise ProtocolError(f"cannot open {self.path}: {exc}") from exc
 
     def close(self) -> None:
         if self.fd >= 0:
@@ -669,7 +715,11 @@ class RawmDevice:
     def read_ready(self, timeout: float) -> bool:
         if self.fd < 0:
             return False
-        ready, _, _ = select.select([self.fd], [], [], timeout)
+        try:
+            ready, _, _ = select.select([self.fd], [], [], timeout)
+        except OSError as exc:
+            self.last_error = str(exc)
+            raise ProtocolError(f"read wait failed: {exc}") from exc
         return bool(ready)
 
     def drain(self, timeout: float = 0.0) -> list[Frame]:
@@ -724,6 +774,7 @@ class RawmDevice:
         No configuration is written; this is safe for diagnostics.
         """
         self.stream = FrameStream()
+        self.last_document = None
         self.write_frame(encode_query_frame())
         frames: list[Frame] = []
         deadline = time.monotonic() + timeout
@@ -740,16 +791,24 @@ class RawmDevice:
                     if not isinstance(parsed, dict):
                         raise ProtocolError("bad query reply: expected a JSON object")
                     doc = parsed
+                    self.last_document = parsed
             if doc is not None and time.monotonic() > deadline - timeout + 0.25:
                 break
         # collect anything still queued without blocking
         frames.extend(self.drain(0))
         return doc, frames
 
-    def query(self, timeout: float = 1.2) -> tuple[MouseState | None, list[Frame]]:
-        """Send CMD_QUERY and gather the returned JSON + frames."""
+    def query(
+        self, timeout: float = 1.2, base: MouseState | None = None
+    ) -> tuple[MouseState | None, list[Frame]]:
+        """Send CMD_QUERY and gather the returned JSON + frames.
+
+        *base* fills fields omitted from a partial reply.  Write paths should
+        pass the previous state so a missing optional key never becomes a
+        default value that is then written back to the mouse.
+        """
         doc, frames = self.query_document(timeout)
-        return (state_from_query(doc) if doc is not None else None), frames
+        return (state_from_query(doc, base) if doc is not None else None), frames
 
     def set_state(self, state: MouseState) -> None:
         self.write_frame(encode_mouse_param_frame(state))
@@ -830,8 +889,9 @@ def apply_notifications(state: MouseState, frames: Iterable[Frame]) -> tuple[Mou
                 state.ripple_control = value
                 changed.add("ripple_control")
         elif sub == NOTIFY_LIGHT and data:
-            if state.light != data[0]:
-                state.light = data[0]
+            value = normalize_light(data[0])
+            if state.light != value:
+                state.light = value
                 changed.add("light")
         elif sub == NOTIFY_KEY_DELAY:
             delays = [max(0, min(255, x)) for x in list(data[:32])]

@@ -10,6 +10,8 @@ from rawm_control.protocol import (
     CMD_NOTIFY,
     CMD_QUERY_RESULT,
     NOTIFY_BATTERY,
+    NOTIFY_BATTERY_LEVELS,
+    DeviceBusy,
     Frame,
     HidrawDevice,
     MouseState,
@@ -27,7 +29,7 @@ class FakeDevice:
         self.written = []
         self.locked = False
 
-    def query(self, timeout: float = 1.4):
+    def query(self, timeout: float = 1.4, base=None):
         if self.results:
             return self.results.pop(0)
         return self.result
@@ -167,7 +169,7 @@ class WorkerLifecycleTest(unittest.TestCase):
         )
         fresh = MouseState(product_id=0x2338, cpi=1600, motion_sync=1)
         confirmed = MouseState(product_id=0x2338, cpi=3200, motion_sync=1)
-        fake = FakeDevice("/dev/null", result=(confirmed, []), results=[(fresh, [])])
+        fake = FakeDevice(__file__, result=(confirmed, []), results=[(fresh, [])])
         worker._device = fake
         worker._state = old
         worker._last_query = 0
@@ -250,6 +252,74 @@ class WorkerLifecycleTest(unittest.TestCase):
         self.assertFalse(worker._via_receiver)
         self.assertIsNone(worker._receiver_pid)
         self.assertIsNone(worker._device)
+
+    def test_battery_notification_survives_query_refresh(self):
+        worker, _states, _links, _writes = self.make_worker()
+        old = MouseState(
+            product_id=0x2338,
+            battery_levels=[3000, 3100, 3200],
+        )
+        levels = bytes([0x10, 0x0E, 0x20, 0x0E, 0x30, 0x0E])
+        frame = Frame(
+            cmd=CMD_NOTIFY,
+            size=2 + len(levels),
+            subtype=NOTIFY_BATTERY_LEVELS,
+            data=levels,
+        )
+        worker._state = old
+        worker._device = FakeDevice(
+            "/dev/null", (MouseState(product_id=0x2338), [frame])
+        )
+
+        worker._perform_query()
+
+        self.assertEqual(worker.state.battery_levels, [3600, 3616, 3632])
+
+    def test_surface_quality_survives_query_refresh(self):
+        worker, _states, _links, _writes = self.make_worker()
+        worker._state = MouseState(product_id=0x2338, surface_quality=140)
+        worker._device = FakeDevice("/dev/null", (MouseState(product_id=0x2338), []))
+
+        worker._perform_query()
+
+        self.assertEqual(worker.state.surface_quality, 140)
+
+    def test_light_confirmation_ignores_write_only_flag(self):
+        worker, _states, _links, writes = self.make_worker()
+        fake = FakeDevice("/dev/null", (MouseState(product_id=0x2338, light=0x30), []))
+        fake.last_document = {"light": 0x30}
+        worker._device = fake
+        worker._pending_confirm = {"light": 0x38}
+
+        worker._perform_query()
+
+        self.assertIn((True, "Saved to mouse"), writes)
+
+    def test_confirmation_fails_when_the_changed_field_is_absent(self):
+        worker, _states, _links, writes = self.make_worker()
+        fake = FakeDevice("/dev/null", (MouseState(product_id=0x2338, light=0x30), []))
+        fake.last_document = {}
+        worker._device = fake
+        worker._pending_confirm = {"light": 0x38}
+
+        worker._perform_query()
+
+        self.assertIn((False, "Mouse did not confirm the requested change"), writes)
+
+    def test_busy_lock_requeues_patch_instead_of_dropping_it(self):
+        class BusyDevice(FakeDevice):
+            def lock_exclusive(self):
+                raise DeviceBusy("busy")
+
+        worker, _states, _links, writes = self.make_worker()
+        worker._device = BusyDevice(__file__, (MouseState(product_id=0x2338), []))
+        worker._pending_patch = {"cpi": 800}
+        worker._stop.set()  # make the busy retry wait return immediately
+
+        worker._loop_connected()
+
+        self.assertEqual(worker._pending_patch, {"cpi": 800})
+        self.assertTrue(any(not ok for ok, _message in writes))
 
 
 if __name__ == "__main__":

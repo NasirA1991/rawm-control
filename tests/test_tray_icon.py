@@ -10,6 +10,7 @@ from rawm_control.tray import (
     ICON_SIZE,
     TRAY_ICON_SIZES,
     render_icon,
+    render_mouse_icon,
     render_percent_icon,
     render_tray_icon,
     render_tray_icon_sizes,
@@ -62,6 +63,13 @@ class TrayIconTests(unittest.TestCase):
             for charging in (False, True):
                 state = MouseState(battery=battery, charging=charging)
                 self.assertTrue(render_percent_icon(state, True)[0][2])
+
+    def test_battery_less_mouse_icon_has_no_battery_column(self):
+        full = render_mouse_icon(MouseState(battery=100), True, show_battery=False)[0][2]
+        empty = render_mouse_icon(MouseState(battery=0), True, show_battery=False)[0][2]
+        with_bar = render_mouse_icon(MouseState(battery=100), True, show_battery=True)[0][2]
+        self.assertEqual(full, empty)
+        self.assertNotEqual(full, with_bar)
 
 
 if __name__ == "__main__":

@@ -18,7 +18,7 @@ class FakeDevice:
         self.written = None
         self.closed = False
 
-    def query(self, timeout=1.4):
+    def query(self, timeout=1.4, base=None):
         return self.results.pop(0)
 
     def set_state(self, state):
@@ -76,6 +76,28 @@ class CliRunTest(unittest.TestCase):
         self.assertIn("not mapped", err)
         self.assertIsNone(dev.written)
         self.assertTrue(dev.closed)
+
+    def test_power_mode_lowers_polling_when_needed(self):
+        state = MouseState(
+            product_id=0x2338,
+            power_mode=3,
+            polling_rate=8000,
+            via_receiver=True,
+            receiver_product_id=0x232B,
+        )
+        fresh = copy.deepcopy(state)
+        confirmed = copy.deepcopy(state)
+        confirmed.power_mode = 0
+        confirmed.polling_rate = 125
+
+        code, out, _err, dev = self.run_with(
+            state, [(fresh, []), (confirmed, [])], ["power", "office"]
+        )
+
+        self.assertEqual(code, 0)
+        self.assertEqual(dev.written.power_mode, 0)
+        self.assertEqual(dev.written.polling_rate, 125)
+        self.assertIn("polling rate lowered", out)
 
     def test_cli_help_does_not_enter_gui(self):
         with redirect_stdout(io.StringIO()) as out:

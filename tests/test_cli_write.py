@@ -13,7 +13,7 @@ class FakeDevice:
         self.results = list(results)
         self.written = None
 
-    def query(self, timeout=1.4):
+    def query(self, timeout=1.4, base=None):
         return self.results.pop(0)
 
     def set_state(self, state):
