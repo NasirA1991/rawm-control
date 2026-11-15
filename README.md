@@ -22,7 +22,7 @@ protocol used here was recovered from the public RAWM HUB web driver.
 |---|---|---|
 | **Verified** | ER21Pro (`1915:2338`) direct, and through the **RAWM HS Receiver** (`1915:232b`) | Tested on physical hardware. |
 | **Catalogued, unverified** | Other recognised RAWM mouse profiles in the [device list](docs/DEVICES.md) | Shared vendor protocol; the app shows **UNVERIFIED MODEL**. These profiles are configurable, but have not been tested on physical hardware. |
-| **Read-only** | Unknown USB product IDs and RAWM keyboards (AK60 `1915:2345`, Z68A `1915:2342`) | Diagnostics only; the app never writes configuration to them. |
+| **Read-only / ignored** | RAWM keyboards (AK60 `1915:2345`, Z68A `1915:2342`) and unknown `1915` product IDs | Keyboards are detected read-only. Unknown product IDs are not treated as RAWM mice and are never opened for writes. |
 
 Only the ER21Pro is hardware-verified — this is not a claim that the whole RAWM
 family works. The complete matrix of model names, USB IDs, receiver IDs, polling
@@ -40,10 +40,11 @@ paru -S rawm-control
 rawm-control
 ```
 
-For other distributions, use the Flatpak or AppImage from the
-[latest release](https://github.com/NasirA1991/rawm-control/releases/latest).
-See the [installation guide](docs/INSTALL.md) for dependencies, permissions,
-updates and uninstall instructions.
+For other distributions, use the Flatpak or the source install script from the
+[repository](https://github.com/NasirA1991/rawm-control). The AppImage is
+available for a quick trial without installing. See the
+[installation guide](docs/INSTALL.md) for dependencies, permissions, updates and
+uninstall instructions.
 
 **On this page:** [Compatibility](#compatibility-at-a-glance)
 · [Features](#features) · [Screenshots](#screenshots)
@@ -90,16 +91,18 @@ supplied by the desktop. Available controls depend on the connected model.</sub>
 |---|---|---|
 | **AUR** `rawm-control` / `rawm-control-git` | Arch, CachyOS, EndeavourOS | Yes |
 | **Flatpak** | Most distributions; requires the GNOME 50 runtime | Yes, inside the sandbox |
-| **AppImage** | Trying the app without installing | GUI only |
-| **Source** | Development and packaging | Yes |
+| **Source / install script** | Any distribution, development and packaging | Yes |
+| **AppImage** | A quick trial without installing | GUI only |
 
 - **AUR** installs the per-product udev rule automatically.
 - **Flatpak** uses broader `--device=all` access so the sandbox can reach
-  `/dev/hidraw*`.
-- **AppImage** uses the host Python 3.10+ and GTK/PyGObject stack, and does not
-  include `rawmctl`.
-- **Source** installs can use the system or `--user` layout; a user install
-  still needs the udev rule for hardware access.
+  `/dev/hidraw*`, but the host udev rule is still needed unless `hidraw` is
+  already accessible. The app offers **Save rule file** to help with this.
+- **Source / install script** installs with `sudo ./install.sh` or
+  `./install.sh --user`; a user install needs the one-time
+  `sudo ./install.sh --udev-only` permission step.
+- **AppImage** uses the host Python 3.10+ and GTK/PyGObject stack, does not
+  include `rawmctl`, and may need the same host udev rule.
 
 The [installation guide](docs/INSTALL.md) has the exact commands for every
 format, dependencies, release verification, updates and uninstall instructions.
@@ -109,13 +112,17 @@ format, dependencies, release verification, updates and uninstall instructions.
 Native packages install a udev rule for the known RAWM mouse and receiver
 product IDs only. They do not grant access to every device using vendor ID
 `1915`, and unknown products and keyboards are excluded from writable access.
-Flatpak is different: its `--device=all` permission is broader than the native
-rule, so prefer a native package if you want narrower access.
+Flatpak is different: `--device=all` lets the sandbox reach `/dev/hidraw*`, but
+it does not change host permissions. A udev rule is still needed unless the
+device is already accessible; the Flatpak banner offers **Save rule file** and
+the host command. Prefer a native package if you want the narrower rule.
 
-If a source or AppImage install reports a permission error, the Device banner
-offers **Copy setup command**. The rule and reload commands are documented in
-the [installation guide](docs/INSTALL.md#permissions). Do not run the
-application as root as a workaround for HID permissions.
+If a source, AppImage or Flatpak install reports a permission error, the Device
+banner offers **Copy setup command**. Native installs also offer **Fix
+permissions**, which runs one `pkexec` prompt to install the bundled rule.
+The rule and reload commands are documented in the
+[installation guide](docs/INSTALL.md#permissions). Do not run the application
+as root as a workaround for HID permissions.
 
 ## Usage
 
@@ -161,10 +168,11 @@ bundled data has 23 mouse product IDs across 21 model rows, nine receiver
 dongles and two keyboard products. Only the ER21Pro is hardware-verified.
 
 Recognised but unverified models are configurable and show an **UNVERIFIED
-MODEL** badge; the badge means untested, not read-only. Unknown PIDs and
-keyboards are different: they remain read-only and are never written. Receiver
-dongles are supported, but the paired mouse may be asleep; the app shows a Retry
-banner rather than inventing values.
+MODEL** badge; the badge means untested, not read-only. RAWM keyboards are
+read-only. Unknown `1915` product IDs are filtered out during discovery, so they
+are never opened as a mouse or written. Receiver dongles are supported, but the
+paired mouse may be asleep; the app shows a Retry banner rather than inventing
+values.
 
 To help confirm another model, use **Device → Diagnostics → Save device report**
 (or `rawmctl report`), review the file, and attach it to a

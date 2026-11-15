@@ -7,6 +7,7 @@ import logging
 import os
 import threading
 import time
+from enum import Enum
 from typing import Callable
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,15 @@ from .protocol import (
 StateCallback = Callable[[MouseState, set[str]], None]
 LinkCallback = Callable[[bool, str | None], None]
 WriteCallback = Callable[[bool, str], None]
+
+
+class LinkStatus(str, Enum):
+    """Why the worker is (not) connected to a mouse."""
+
+    CONNECTED = "connected"
+    NO_DEVICE = "no_device"
+    PERMISSION_DENIED = "permission_denied"
+    ERROR = "error"
 
 
 class DeviceWorker:
@@ -59,6 +69,7 @@ class DeviceWorker:
         self._state = MouseState()
         self._device: RawmDevice | None = None
         self._connected = False
+        self._link_status = LinkStatus.NO_DEVICE
         self._last_error: str | None = None
         self._last_query = 0.0
         self._confirm_at = 0.0
@@ -85,6 +96,10 @@ class DeviceWorker:
     @property
     def connected(self) -> bool:
         return self._connected
+
+    @property
+    def link_status(self) -> LinkStatus:
+        return self._link_status
 
     @property
     def state(self) -> MouseState:
@@ -164,8 +179,16 @@ class DeviceWorker:
         except Exception:  # a UI callback must never kill the worker
             logger.exception("State callback failed")
 
-    def _emit_link(self, connected: bool, error: str | None = None) -> None:
+    def _emit_link(
+        self,
+        connected: bool,
+        error: str | None = None,
+        status: LinkStatus | None = None,
+    ) -> None:
         self._connected = connected
+        if status is None:
+            status = LinkStatus.CONNECTED if connected else LinkStatus.ERROR
+        self._link_status = status
         try:
             self.on_link(connected, error)
         except Exception:
@@ -200,6 +223,7 @@ class DeviceWorker:
     def _connect(self) -> bool:
         info = self._pick_device()
         if info is None:
+            self._link_status = LinkStatus.NO_DEVICE
             return False
         device = RawmDevice(info.path)
         try:
@@ -207,10 +231,10 @@ class DeviceWorker:
         except protocol.PermissionDenied as exc:
             if not self._warned_permission:
                 self._warned_permission = True
-                self._emit_link(False, str(exc))
+                self._emit_link(False, str(exc), LinkStatus.PERMISSION_DENIED)
             return False
         except ProtocolError as exc:
-            self._emit_link(False, str(exc))
+            self._emit_link(False, str(exc), LinkStatus.ERROR)
             return False
 
         caps = devices.for_product(info.product_id)
@@ -319,7 +343,7 @@ class DeviceWorker:
             self._state = MouseState()
             self._pending_patch = None
             self._pending_sleep = None
-        self._emit_link(False, reason)
+        self._emit_link(False, reason, LinkStatus.NO_DEVICE)
 
     def _preserve_runtime_fields(self, fresh: MouseState) -> MouseState:
         """Carry connection metadata and runtime-only values across queries."""
@@ -565,6 +589,10 @@ class DemoWorker:
     @property
     def connected(self) -> bool:
         return self._connected
+
+    @property
+    def link_status(self) -> LinkStatus:
+        return LinkStatus.CONNECTED if self._connected else LinkStatus.NO_DEVICE
 
     @property
     def state(self) -> MouseState:

@@ -174,7 +174,9 @@ class RawmApplication(Adw.Application):
             self.add_window(self.window)
             # replay current state in case the device connected before the window existed
             if self.worker is not None:
-                self.window.on_link(self.worker.connected, None)
+                self.window.on_link(
+                    self.worker.connected, None, self.worker.link_status
+                )
                 if self.worker.connected:
                     self.window.on_state(self.worker.state, set())
         return self.window
@@ -202,7 +204,8 @@ class RawmApplication(Adw.Application):
         GLib.idle_add(self._apply_state, state, changed)
 
     def _link_from_thread(self, connected: bool, error: str | None) -> None:
-        GLib.idle_add(self._apply_link, connected, error)
+        status = self.worker.link_status if self.worker is not None else None
+        GLib.idle_add(self._apply_link, connected, error, status)
 
     def _write_from_thread(self, ok: bool, message: str) -> None:
         GLib.idle_add(self._apply_write_result, ok, message)
@@ -234,9 +237,9 @@ class RawmApplication(Adw.Application):
             self._low_battery_notified = False
         return False
 
-    def _apply_link(self, connected: bool, error: str | None) -> bool:
+    def _apply_link(self, connected: bool, error: str | None, status=None) -> bool:
         if self.window is not None:
-            self.window.on_link(connected, error)
+            self.window.on_link(connected, error, status)
         if self.tray is not None:
             self.tray.update(None if not connected else self.worker.state, connected, error)
         return False

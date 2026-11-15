@@ -94,10 +94,12 @@ class ReviewP0Test(unittest.TestCase):
         source = Path("data/udev/71-rawm-hid.rules").read_text(encoding="utf-8")
         self.assertEqual(source, text)
 
-    def test_udev_copy_command_contains_the_generated_rule(self):
+    def test_udev_copy_command_points_at_the_generated_rule_file(self):
         command = devices.udev_copy_command()
-        self.assertIn("ATTRS{idProduct}==\"2338\"", command)
+        self.assertIn(str(devices.udev_rule_source()), command)
+        self.assertIn("/etc/udev/rules.d/71-rawm-hid.rules", command)
         self.assertIn("udevadm control --reload-rules", command)
+        self.assertNotIn('ATTRS{idProduct}=="2338"', command)
 
     def test_untrusted_query_values_are_bounded(self):
         state = state_from_query(

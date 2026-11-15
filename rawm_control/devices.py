@@ -8,6 +8,8 @@ only the settings a given mouse actually supports.
 from __future__ import annotations
 
 import json
+import os
+import shlex
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -127,6 +129,45 @@ def all_capabilities() -> list[Capabilities]:
     return sorted(_DB.values(), key=lambda c: c.display_name.lower())
 
 
+def known_product_ids() -> frozenset[int]:
+    """Product IDs present in the bundled RAWM database.
+
+    Discovery must not trust the shared 0x1915 vendor ID alone.  A hidraw node
+    is ours only when its vendor is 1915 *and* its product ID is in this set.
+    """
+    return frozenset(_DB)
+
+
+def udev_rule_source() -> Path:
+    """Absolute path to the rule bundled with the app.
+
+    This works for a source checkout, install.sh's layout
+    (``<prefix>/lib/rawm-control/data``), the AppImage and the Flatpak:
+    ``devices.py`` lives in ``rawm_control/`` next to a sibling ``data/``.
+    """
+    return Path(__file__).resolve().parent.parent / "data" / "udev" / "71-rawm-hid.rules"
+
+
+def is_flatpak() -> bool:
+    """True inside the Flatpak sandbox (where pkexec is not available)."""
+    return os.path.exists("/.flatpak-info")
+
+
+def udev_copy_command(source: str | Path | None = None) -> str:
+    """Return a one-line host command that installs the bundled rule.
+
+    The rule itself is never embedded in Python or scripts: both the app and
+    the installers copy ``data/udev/71-rawm-hid.rules``.
+    """
+    rule = Path(source) if source is not None else udev_rule_source()
+    quoted = shlex.quote(str(rule))
+    return (
+        f"sudo install -Dm644 {quoted} /etc/udev/rules.d/71-rawm-hid.rules"
+        " && sudo udevadm control --reload-rules"
+        " && sudo udevadm trigger --subsystem-match=hidraw"
+    )
+
+
 def udev_rule_text() -> str:
     """Return the per-product udev rule for every supported mouse/receiver.
 
@@ -149,14 +190,6 @@ def udev_rule_text() -> str:
         )
     return "\n".join(lines) + "\n"
 
-
-def udev_copy_command() -> str:
-    return (
-        "sudo tee /usr/lib/udev/rules.d/71-rawm-hid.rules >/dev/null <<'EOF'\n"
-        + udev_rule_text()
-        + "EOF\n"
-        "sudo udevadm control --reload-rules && sudo udevadm trigger"
-    )
 
 def _receiver_caps(state) -> Capabilities | None:
     pid = getattr(state, "receiver_product_id", None)
