@@ -135,6 +135,11 @@ jobs:
             python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/http.log 2>&1 &
             http_pid=$!
             trap "kill $http_pid 2>/dev/null || true" EXIT
+            sleep 1
+            if ! kill -0 "$http_pid" 2>/dev/null; then
+              cat /tmp/http.log
+              exit 1
+            fi
 
             su -s /bin/bash tester -c "cd /src && HOME=/home/tester XDG_STATE_HOME=/home/tester/.state GET_SH_BASE_URL=http://127.0.0.1:8765 bash get.sh --method source --version 0.1.15 --yes"
             test -x /home/tester/.local/bin/rawm-control
@@ -154,6 +159,11 @@ jobs:
             python3 -m http.server 8766 --bind 127.0.0.1 >/tmp/bad-http.log 2>&1 &
             bad_pid=$!
             trap "kill $http_pid $bad_pid 2>/dev/null || true" EXIT
+            sleep 1
+            if ! kill -0 "$bad_pid" 2>/dev/null; then
+              cat /tmp/bad-http.log
+              exit 1
+            fi
             set +e
             su -s /bin/bash tester -c "cd /src && HOME=/home/tester XDG_STATE_HOME=/home/tester/.state GET_SH_BASE_URL=http://127.0.0.1:8766 bash get.sh --method source --version 0.1.15 --yes" >/tmp/bad.log 2>&1
             bad_rc=$?
