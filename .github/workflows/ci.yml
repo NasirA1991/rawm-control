@@ -141,7 +141,7 @@ jobs:
               exit 1
             fi
 
-            su -s /bin/bash tester -c "cd /src && HOME=/home/tester XDG_STATE_HOME=/home/tester/.state GET_SH_BASE_URL=http://127.0.0.1:8765 bash get.sh --method source --version 0.1.15 --yes"
+            su -s /bin/bash tester -c "cd /src && HOME=/home/tester XDG_STATE_HOME=/home/tester/.state GET_SH_BASE_URL=http://127.0.0.1:8765 bash get.sh --method source --version 0.1.15 --user --yes"
             echo "--- installed state ---"
             ls -l /home/tester/.local/bin/rawm-control || true
             su -s /bin/bash tester -c "/home/tester/.local/bin/rawm-control --version" || true
