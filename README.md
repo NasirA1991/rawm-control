@@ -87,6 +87,35 @@ supplied by the desktop. Available controls depend on the connected model.</sub>
 
 ## Installation
 
+### Quick install (any distro)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/NasirA1991/rawm-control/main/get.sh | bash
+```
+
+Prefer to read it first:
+
+```bash
+curl -fsSLo get.sh https://raw.githubusercontent.com/NasirA1991/rawm-control/main/get.sh
+less get.sh
+bash get.sh
+```
+
+`get.sh` detects your distribution and verifies every download against the
+release's `SHA256SUMS` before running it. Arch-based systems use the AUR (a
+helper if available, otherwise `makepkg`); other distributions use Flatpak when
+available, then the source tarball. It installs the per-product udev rule,
+records the method for `--uninstall`, and asks before changing anything.
+
+When piping, pass options after `bash -s --`, for example
+`curl -fsSL .../get.sh | bash -s -- --user`. Options: `--yes` for a
+non-interactive run, `--method aur|flatpak|source`, `--version vX.Y.Z`,
+`--user` for a source install, `--dry-run` to print commands, and `--uninstall`.
+It stops with instructions if the selected release predates the `--udev-only`
+installer flag.
+
+### Choose a format
+
 | Method | Best for | `rawmctl` |
 |---|---|---|
 | **AUR** `rawm-control` / `rawm-control-git` | Arch, CachyOS, EndeavourOS | Yes |
