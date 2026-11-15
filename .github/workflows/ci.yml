@@ -142,6 +142,11 @@ jobs:
             fi
 
             su -s /bin/bash tester -c "cd /src && HOME=/home/tester XDG_STATE_HOME=/home/tester/.state GET_SH_BASE_URL=http://127.0.0.1:8765 bash get.sh --method source --version 0.1.15 --yes"
+            echo "--- installed state ---"
+            ls -l /home/tester/.local/bin/rawm-control || true
+            su -s /bin/bash tester -c "/home/tester/.local/bin/rawm-control --version" || true
+            ls -l /etc/udev/rules.d/71-rawm-hid.rules || true
+            find /home/tester/.state -maxdepth 4 -type f -print -exec cat {} \; || true
             test -x /home/tester/.local/bin/rawm-control
             su -s /bin/bash tester -c "/home/tester/.local/bin/rawm-control --version" | grep -q "0.1.15"
             test -f /etc/udev/rules.d/71-rawm-hid.rules
