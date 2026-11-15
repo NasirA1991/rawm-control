@@ -73,7 +73,10 @@ The bundle contains the app and its `dbus-python` dependency, and uses the
 GNOME 50 runtime (`org.gnome.Platform//50`); install that runtime first if
 Flatpak reports it missing. The app is **not** distributed through Flathub. The
 manifest grants `--device=all` so the sandbox can reach `/dev/hidraw*`; this is
-broader than the native per-product udev rule.
+broader than the native per-product udev rule, but it does not change host
+ownership or mode. A host udev rule is still needed unless `hidraw` is already
+accessible. If the app reports permission denied, use **Save rule file**, then
+run the copied host command.
 
 The CLI is included in the sandbox:
 
@@ -116,10 +119,18 @@ For a per-user install without root:
 
 ```bash
 ./install.sh --user             # ~/.local, no udev rule
+sudo ./install.sh --udev-only   # once, from the checkout: host udev rule
 ```
 
-A user install still needs the udev rule for hardware access; the installer
-prints the exact command. Run it from the checkout so `data/udev/` is available.
+`--udev-only` installs only
+`/etc/udev/rules.d/71-rawm-hid.rules`, reloads udev and asks you to replug the
+mouse or receiver. The system install already performs that step.
+
+The installer checks the Python/GTK runtime dependencies and prints the package
+command for your distribution if one is missing. Use `--skip-deps` only when
+your packaging environment provides those dependencies separately. Both
+scripts support `--help`; use `sudo ./uninstall.sh` or
+`./uninstall.sh --user` to remove an install.
 
 To build an Arch package locally:
 
@@ -139,19 +150,27 @@ every device using vendor ID `1915`. Unknown products and keyboards are not
 included.
 
 If the app reports a permission error, the Device banner offers **Copy setup
-command**. From a source checkout, the same command is:
+command** (and **Fix permissions** on a native install). From a source checkout,
+the same command is:
+
+```bash
+sudo ./install.sh --udev-only
+```
+
+Or install the rule manually:
 
 ```bash
 sudo install -Dm644 data/udev/71-rawm-hid.rules \
-  /usr/lib/udev/rules.d/71-rawm-hid.rules
+  /etc/udev/rules.d/71-rawm-hid.rules
 sudo udevadm control --reload-rules
-sudo udevadm trigger
+sudo udevadm trigger --subsystem-match=hidraw
 # unplug and reconnect the receiver
 ```
 
 A user install does not run this step. The rule file is installed by the system
 package; for a source or AppImage install, keep a copy of the file or use the
-command from the app banner.
+command from the app banner. The Flatpak offers **Save rule file** because the
+rule must be installed on the host.
 
 If you add a new product to `rawm_control/data/devices.json`, regenerate the
 rule with:
@@ -207,6 +226,16 @@ check.
 
 Manual uninstalls keep user settings in `~/.config/rawm-control`. AUR and
 Flatpak removal follows the package manager’s normal rules for user data.
+
+For a custom prefix, pass the same `PREFIX` to the uninstaller:
+
+```bash
+PREFIX=/opt/rawm sudo ./uninstall.sh
+```
+
+`uninstall.sh` also supports `--help`; it removes the system and per-user
+layouts, both udev rule locations when run as root, and the installed desktop,
+metainfo and icon files.
 
 ## Troubleshooting
 

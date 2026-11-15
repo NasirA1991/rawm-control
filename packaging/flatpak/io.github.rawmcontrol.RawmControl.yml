@@ -11,6 +11,8 @@ finish-args:
   - --socket=wayland
   # Vendor HID collection (/dev/hidraw*) needs raw device access
   - --device=all
+  # Save the udev rule from the permission banner for host installation
+  - --filesystem=xdg-download
   # StatusNotifierItem tray (KDE and AppIndicator hosts)
   - --talk-name=org.kde.StatusNotifierWatcher
   - --own-name=io.github.rawmcontrol.RawmControl.StatusNotifierItem

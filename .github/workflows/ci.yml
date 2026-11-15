@@ -60,3 +60,121 @@ jobs:
             wait "$pid"
           '
           cat /tmp/ui.log
+
+  get-sh:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: ubuntu:24.04
+            expected: Flatpak
+            setup: apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y bash curl tar coreutils passwd flatpak
+          - image: fedora:41
+            expected: Flatpak
+            setup: dnf install -y bash curl tar coreutils shadow-utils util-linux flatpak
+          - image: archlinux:latest
+            expected: AUR
+            setup: pacman -Sy --noconfirm --needed bash curl tar coreutils shadow util-linux base-devel git
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Shellcheck get.sh
+        if: matrix.image == 'ubuntu:24.04'
+        run: |
+          printf '%s\n' \
+            "51.12.153.52 azure.archive.ubuntu.com" \
+            "91.189.91.83 archive.ubuntu.com" \
+            "185.125.190.81 security.ubuntu.com" | sudo tee -a /etc/hosts >/dev/null
+          timeout 300 sudo apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=3 update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y shellcheck
+          shellcheck get.sh
+      - name: Dry-run in ${{ matrix.image }}
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$GITHUB_WORKSPACE:/src:ro" -w /src "${{ matrix.image }}" bash -c '
+            set -euo pipefail
+            ${{ matrix.setup }}
+            useradd -m tester
+            su -s /bin/bash tester -c "cd /src && HOME=/tmp/getsh-home bash get.sh --dry-run --yes" | tee /tmp/getsh.out
+            grep -q "Method: ${{ matrix.expected }}" /tmp/getsh.out
+          '
+
+  get-sh-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Build fake release
+        run: |
+          mkdir -p "$RUNNER_TEMP/getsh-release"
+          git archive --format=tar.gz --prefix="rawm-control-0.1.15/" \
+            -o "$RUNNER_TEMP/getsh-release/rawm-control-0.1.15.tar.gz" HEAD
+          (cd "$RUNNER_TEMP/getsh-release" && sha256sum rawm-control-0.1.15.tar.gz > SHA256SUMS)
+      - name: Source install, checksum abort and uninstall
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/src:ro" \
+            -v "$RUNNER_TEMP/getsh-release:/release:ro" \
+            ubuntu:24.04 bash -c '
+            set -euo pipefail
+            apt-get update
+            DEBIAN_FRONTEND=noninteractive apt-get install -y \
+              bash curl tar coreutils sudo python3 passwd python3-gi \
+              gir1.2-gtk-4.0 gir1.2-adw-1 python3-cairo python3-dbus \
+              libgtk-4-1 libadwaita-1-0 hicolor-icon-theme udev
+            useradd -m tester
+            printf "tester ALL=(ALL) NOPASSWD:ALL\n" >/etc/sudoers.d/tester
+            chmod 440 /etc/sudoers.d/tester
+
+            # The container has no udev daemon; the installer only needs to
+            # write the rule, while the host does the reload.
+            printf "#!/bin/sh\nexit 0\n" >/usr/bin/udevadm
+            chmod 0755 /usr/bin/udevadm
+
+            cd /release
+            python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/http.log 2>&1 &
+            http_pid=$!
+            trap "kill $http_pid 2>/dev/null || true" EXIT
+            sleep 1
+            if ! kill -0 "$http_pid" 2>/dev/null; then
+              cat /tmp/http.log
+              exit 1
+            fi
+
+            su -s /bin/bash tester -c "cd /src && HOME=/home/tester XDG_STATE_HOME=/home/tester/.state GET_SH_BASE_URL=http://127.0.0.1:8765 bash get.sh --method source --version 0.1.15 --user --yes"
+            echo "--- installed state ---"
+            ls -l /home/tester/.local/bin/rawm-control || true
+            su -s /bin/bash tester -c "/home/tester/.local/bin/rawm-control --version" || true
+            ls -l /etc/udev/rules.d/71-rawm-hid.rules || true
+            find /home/tester/.state -maxdepth 4 -type f -print -exec cat {} \; || true
+            test -x /home/tester/.local/bin/rawm-control
+            su -s /bin/bash tester -c "/home/tester/.local/bin/rawm-control --version" | grep -q "0.1.15"
+            test -f /etc/udev/rules.d/71-rawm-hid.rules
+            test -f /home/tester/.state/rawm-control/get-sh.state
+
+            su -s /bin/bash tester -c "cd /src && HOME=/home/tester XDG_STATE_HOME=/home/tester/.state GET_SH_BASE_URL=http://127.0.0.1:8765 bash get.sh --uninstall --yes"
+            test ! -e /home/tester/.local/bin/rawm-control
+            test ! -e /etc/udev/rules.d/71-rawm-hid.rules
+
+            mkdir -p /tmp/bad
+            cp /release/rawm-control-0.1.15.tar.gz /tmp/bad/
+            cp /release/SHA256SUMS /tmp/bad/
+            printf "corrupt\n" >> /tmp/bad/rawm-control-0.1.15.tar.gz
+            cd /tmp/bad
+            python3 -m http.server 8766 --bind 127.0.0.1 >/tmp/bad-http.log 2>&1 &
+            bad_pid=$!
+            trap "kill $http_pid $bad_pid 2>/dev/null || true" EXIT
+            sleep 1
+            if ! kill -0 "$bad_pid" 2>/dev/null; then
+              cat /tmp/bad-http.log
+              exit 1
+            fi
+            set +e
+            su -s /bin/bash tester -c "cd /src && HOME=/home/tester XDG_STATE_HOME=/home/tester/.state GET_SH_BASE_URL=http://127.0.0.1:8766 bash get.sh --method source --version 0.1.15 --yes" >/tmp/bad.log 2>&1
+            bad_rc=$?
+            set -e
+            test "$bad_rc" -ne 0
+            grep -q "Checksum verification failed" /tmp/bad.log
+            test ! -e /home/tester/.local/bin/rawm-control
+            echo "Checksum abort verified"
+          '

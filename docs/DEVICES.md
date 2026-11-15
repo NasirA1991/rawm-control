@@ -64,15 +64,17 @@ mouse configuration:
 | AK60 | 1915:2345 | Read-only diagnostics; never written |
 | Z68A | 1915:2342 | Read-only diagnostics; never written |
 
-Unknown PIDs are treated the same way. Use `rawmctl scan` to identify a device
-and `rawmctl report` to collect the read-only details needed for support.
+Unknown `1915` product IDs are not treated as RAWM mice: discovery checks the
+product ID against this database before opening anything, so they are ignored
+and never written. Use `lsusb` and `dmesg` when reporting an unrecognised
+device; `rawmctl report` covers the recognised device it can open.
 
 ## Safety
 
-- Unknown PIDs are **read-only diagnostics**. They are not opened as writable
-  mice because the parameter layout is not verified.
-- Keyboards and other non-mouse RAWM products are filtered out for the same
-  reason.
+- Unknown `1915` product IDs are filtered out at discovery. They are never
+  opened as a mouse because the parameter layout is not verified.
+- Keyboards and other non-mouse RAWM products are detected read-only and
+  filtered out of the writable-device path for the same reason.
 - Configuration writes are changed fields only, rebased on a fresh query and
   read back before success is reported.
 - **Restore detected settings** reverts to the snapshot read when the mouse

@@ -510,7 +510,16 @@ def _read_uevent(dev_path: str) -> dict[str, str]:
 
 
 def discover(vendor_id: int = VID) -> list[HidrawDevice]:
-    """Find RAWM vendor HID collections under /sys/class/hidraw."""
+    """Find known RAWM HID collections under /sys/class/hidraw.
+
+    Vendor ID 0x1915 is shared by unrelated keyboards, dongles and development
+    boards.  A node is ours only when its HID_ID product is also present in the
+    bundled device database; product lookup is imported lazily to avoid the
+    devices -> protocol import cycle.
+    """
+    from .devices import known_product_ids
+
+    known_products = known_product_ids()
     base = "/sys/class/hidraw"
     found: list[HidrawDevice] = []
     try:
@@ -526,16 +535,18 @@ def discover(vendor_id: int = VID) -> list[HidrawDevice]:
         if f":0000{vendor_id:04X}:" not in hid_id:
             continue
         try:
+            product_id = int(hid_id.split(":")[-1], 16)
+        except ValueError:
+            continue
+        if product_id not in known_products:
+            continue
+        try:
             with open(os.path.join(sysdev, "device", "report_descriptor"), "rb") as fh:
                 descriptor = fh.read()
         except OSError:
             continue
         if VENDOR_USAGE_PAGE not in descriptor:
             continue
-        try:
-            product_id = int(hid_id.split(":")[-1], 16)
-        except ValueError:
-            product_id = 0
         found.append(
             HidrawDevice(
                 path=f"/dev/{name}",

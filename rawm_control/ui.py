@@ -3,6 +3,12 @@
 from __future__ import annotations
 
 import math
+import os
+import shutil
+import subprocess
+import tempfile
+import threading
+from pathlib import Path
 from typing import Callable
 
 import cairo
@@ -63,9 +69,6 @@ CSS = """
 
 COLOR_LABELS = [name for name in COLOR_NAMES]
 COLOR_KEY_BY_INDEX = ["off", "red", "green", "blue", "yellow", "purple", "skyblue", "white"]
-
-UDEV_COMMAND = devices.udev_copy_command()
-
 
 def _same_labels(model, labels: list[str]) -> bool:
     if model is None or model.get_n_items() != len(labels):
@@ -194,6 +197,9 @@ class MainWindow(Adw.ApplicationWindow):
         self._key_index = 0
         self._kd_model_len = 0
         self._on_settings_changed = on_settings_changed
+        self._flatpak = devices.is_flatpak()
+        self._pkexec = shutil.which("pkexec")
+        self._fix_running = False
 
         self.set_default_size(980, 760)
         self.set_size_request(620, 520)
@@ -226,16 +232,27 @@ class MainWindow(Adw.ApplicationWindow):
         self.permission_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         self.permission_bar.add_css_class("permission-bar")
         self.permission_bar.set_visible(False)
-        permission_label = Gtk.Label(
+        self.permission_label = Gtk.Label(
             label="Missing hidraw permission. Install the udev rule on the host once.",
             xalign=0,
         )
-        permission_label.set_hexpand(True)
-        permission_label.set_wrap(True)
+        self.permission_label.set_hexpand(True)
+        self.permission_label.set_wrap(True)
         self.permission_copy = Gtk.Button(label="Copy setup command")
         self.permission_copy.connect("clicked", self._on_copy_udev)
-        self.permission_bar.append(permission_label)
+        self.permission_fix = Gtk.Button(label="Fix permissions")
+        self.permission_fix.connect("clicked", self._on_fix_permissions)
+        self.permission_save = Gtk.Button(label="Save rule file")
+        self.permission_save.connect("clicked", self._on_save_rule)
+        self.permission_rescan = Gtk.Button(label="Rescan")
+        self.permission_rescan.connect("clicked", lambda *_: self.worker.refresh())
+        self.permission_fix.set_visible(False)
+        self.permission_save.set_visible(False)
+        self.permission_bar.append(self.permission_label)
         self.permission_bar.append(self.permission_copy)
+        self.permission_bar.append(self.permission_fix)
+        self.permission_bar.append(self.permission_save)
+        self.permission_bar.append(self.permission_rescan)
         root.append(self.permission_bar)
 
         self.stack = Adw.ViewStack()
@@ -720,7 +737,7 @@ class MainWindow(Adw.ApplicationWindow):
         finally:
             self._loading = False
 
-    def on_link(self, connected: bool, error: str | None) -> None:
+    def on_link(self, connected: bool, error: str | None, status=None) -> None:
         self._connected = connected
         if connected:
             self.banner.set_revealed(False)
@@ -740,10 +757,137 @@ class MainWindow(Adw.ApplicationWindow):
         self.badge_sensor.set_text("")
         self.banner.set_title(error or "Mouse not connected")
         self.banner.set_revealed(True)
-        permission = bool(error and any(
-            word in error.lower() for word in ("permission", "udev", "hidraw")
-        ))
-        self.permission_bar.set_visible(permission)
+        status_value = getattr(status, "value", status)
+        permission = status_value == "permission_denied" or bool(
+            error
+            and any(word in error.lower() for word in ("permission", "udev", "hidraw"))
+        )
+        self._show_permission_bar(permission)
+
+    def _show_permission_bar(self, visible: bool) -> None:
+        if not visible:
+            self.permission_bar.set_visible(False)
+            return
+        self.permission_bar.set_visible(True)
+        if self._flatpak:
+            self.permission_label.set_text(
+                "The Flatpak can reach the receiver but cannot open it. "
+                "Install the udev rule on the host, or save it below."
+            )
+        else:
+            self.permission_label.set_text(
+                "Missing hidraw permission. Install the udev rule on the host once."
+            )
+        self.permission_fix.set_visible(not self._flatpak and bool(self._pkexec))
+        self.permission_save.set_visible(self._flatpak)
+
+    # ---------------------------------------------------- permission actions
+    def _rule_source(self):
+        source = devices.udev_rule_source()
+        if not source.is_file():
+            self.show_toast("Bundled udev rule not found")
+            return None
+        return source
+
+    def _downloads_rule(self) -> Path:
+        return Path.home() / "Downloads" / "71-rawm-hid.rules"
+
+    def _rule_for_command(self) -> Path | None:
+        """Return a host-readable rule path, copying out of an AppImage/mount."""
+        source = self._rule_source()
+        if source is None:
+            return None
+        if self._flatpak:
+            return self._downloads_rule()
+        if os.environ.get("APPIMAGE"):
+            target = Path(tempfile.gettempdir()) / "71-rawm-hid.rules"
+            try:
+                shutil.copyfile(source, target)
+            except OSError as exc:
+                self.show_toast(f"Could not copy the udev rule: {exc}")
+                return None
+            return target
+        return source
+
+    def _on_copy_udev(self, _button) -> None:
+        rule = self._rule_for_command()
+        if rule is None:
+            return
+        if self._flatpak and not rule.is_file():
+            self.show_toast("Save the rule file first, then copy the command")
+            return
+        command = devices.udev_copy_command(rule)
+        display = Gdk.Display.get_default()
+        if display is not None:
+            display.get_clipboard().set(command)
+        self.show_toast("Setup command copied — run it on the host")
+
+    def _on_save_rule(self, _button) -> None:
+        source = self._rule_source()
+        if source is None:
+            return
+        target = self._downloads_rule()
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, target)
+            os.chmod(target, 0o644)
+        except OSError as exc:
+            self.show_toast(f"Could not save the udev rule: {exc}")
+            return
+        display = Gdk.Display.get_default()
+        if display is not None:
+            display.get_clipboard().set(devices.udev_copy_command(target))
+        self.show_toast(f"Saved {target} — setup command copied")
+
+    def _on_fix_permissions(self, _button) -> None:
+        if self._flatpak or not self._pkexec or self._fix_running:
+            return
+        rule = self._rule_for_command()
+        if rule is None:
+            return
+        self._fix_running = True
+        self.permission_fix.set_sensitive(False)
+        command = [
+            self._pkexec,
+            "sh",
+            "-c",
+            'install -Dm644 "$1" /etc/udev/rules.d/71-rawm-hid.rules'
+            " && udevadm control --reload-rules"
+            " && udevadm trigger --subsystem-match=hidraw",
+            "sh",
+            str(rule),
+        ]
+
+        def run() -> None:
+            try:
+                result = subprocess.run(
+                    command,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+            except OSError as exc:
+                GLib.idle_add(self._on_fix_finished, 1, str(exc))
+                return
+            GLib.idle_add(self._on_fix_finished, result.returncode, result.stderr)
+
+        threading.Thread(target=run, name="rawm-udev-fix", daemon=True).start()
+
+    def _on_fix_finished(self, returncode: int, stderr: str) -> bool:
+        self._fix_running = False
+        self.permission_fix.set_sensitive(True)
+        if returncode != 0:
+            detail = (stderr or "").strip().splitlines()
+            message = detail[-1] if detail else "permission fix was cancelled or failed"
+            self.show_toast(f"Could not fix permissions: {message}")
+            return False
+        self.show_toast("Rule installed — replug the receiver")
+        GLib.timeout_add_seconds(2, self._rescan_after_fix)
+        return False
+
+    def _rescan_after_fix(self) -> bool:
+        self.worker.refresh()
+        return False
 
     def _update_polling_combo(self, state: MouseState, caps) -> None:
         rates = devices.effective_polling_rates(state)
@@ -757,12 +901,6 @@ class MainWindow(Adw.ApplicationWindow):
         self.row_polling_combo.set_subtitle(
             f"Up to {caps.polling_label(maximum)} on this link and power mode"
         )
-
-    def _on_copy_udev(self, _button) -> None:
-        display = Gdk.Display.get_default()
-        if display is not None:
-            display.get_clipboard().set(UDEV_COMMAND)
-        self.show_toast("Setup command copied — run it on the host")
 
     def _update_performance(self, state: MouseState, caps) -> None:
         self.row_motion.set_active(bool(state.motion_sync))

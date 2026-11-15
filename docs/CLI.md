@@ -21,7 +21,7 @@ flatpak run --command=rawmctl io.github.rawmcontrol.RawmControl status
 rawmctl                    # same as rawmctl status
 rawmctl status
 rawmctl status --json
-rawmctl scan               # list RAWM vendor HID collections
+rawmctl scan               # list known RAWM HID collections
 rawmctl caps               # capabilities of the connected model as JSON
 ```
 
@@ -32,7 +32,7 @@ All of these commands are read-only.
 | Command | Without a value | With a value |
 |---|---|---|
 | `status` | Show battery, link, polling and sensor settings. | — |
-| `scan` | List RAWM vendor HID collections (mouse, receiver or read-only keyboard). | — |
+| `scan` | List known RAWM HID collections (mouse, receiver or read-only keyboard). | — |
 | `caps` | Print the model capability profile as JSON. | — |
 | `report` | Write a local diagnostic report. | `-o FILE` sets the path; `--stdout` prints it. |
 | `polling` | Print the current polling rate in Hz. | `rawmctl polling HZ` sets it. |
